@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -12,12 +13,14 @@ public class CSharpCompiler
     private List<(SyntaxTree, SyntaxTree, (int, int)[])> sources = [];
     private CSharpCompilation compilation = null!;
     
+    public CSharpCompilation Compilation => compilation;
+    
     public void Parse(string source)
     {
         var parseOptions = new CSharpParseOptions(
             LanguageVersion.Latest,
             DocumentationMode.Parse,
-            SourceCodeKind.Script,
+            SourceCodeKind.Regular,
             []
         );
 
@@ -33,10 +36,13 @@ public class CSharpCompiler
     
     public void Compile()
     {
+
+        var system_path = Path.Combine(Path.GetDirectoryName(Environment.ProcessPath), "System.Private.CoreLib.dll");
+        
         compilation = CSharpCompilation.Create(
             "Test",
             sources.Select(e => e.Item2),
-            Basic.Reference.Assemblies.Net90.References.All,
+            [MetadataReference.CreateFromFile(system_path)],
             new CSharpCompilationOptions(
                 outputKind: OutputKind.ConsoleApplication,
                 allowUnsafe: true)
