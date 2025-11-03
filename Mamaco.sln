@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Realizer", "AbstractRealizer\Realizer\Realizer\Realizer.csproj", "{2398747F-5F5D-45D9-AB73-0963D10CEBE9}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mamaco", "Mamaco\Mamaco.csproj", "{EC44B787-0DB5-4F21-85B3-671B76EF5878}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tq.Realizer", "tq-realizer\Tq.Realizer\Tq.Realizer.csproj", "{8DD5F57B-ACCF-4AFB-8458-EFE2BB8F6B90}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,13 +10,13 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{2398747F-5F5D-45D9-AB73-0963D10CEBE9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2398747F-5F5D-45D9-AB73-0963D10CEBE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2398747F-5F5D-45D9-AB73-0963D10CEBE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2398747F-5F5D-45D9-AB73-0963D10CEBE9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EC44B787-0DB5-4F21-85B3-671B76EF5878}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EC44B787-0DB5-4F21-85B3-671B76EF5878}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EC44B787-0DB5-4F21-85B3-671B76EF5878}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EC44B787-0DB5-4F21-85B3-671B76EF5878}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8DD5F57B-ACCF-4AFB-8458-EFE2BB8F6B90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8DD5F57B-ACCF-4AFB-8458-EFE2BB8F6B90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8DD5F57B-ACCF-4AFB-8458-EFE2BB8F6B90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8DD5F57B-ACCF-4AFB-8458-EFE2BB8F6B90}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

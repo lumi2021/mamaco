@@ -1,11 +1,5 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using Mamaco;
+﻿using Mamaco;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FindSymbols;
-using Realizer;
 
 string code = File.ReadAllText("../../../../test-code/main.cs");
 
@@ -32,9 +26,6 @@ if (diagnostics.Any(e => e.Severity == DiagnosticSeverity.Error))
 }
 
 
-var program = new RealizerProgram();
-var root_mod = program.CreateModule("Main");
-
 var globalnamespace = compiler.Compilation.GlobalNamespace;
 
 var symbol_tree = GenerateSymbolTree(globalnamespace);
@@ -42,13 +33,6 @@ var symbol_tree = GenerateSymbolTree(globalnamespace);
 Console.WriteLine("Build Finished Successfully!");
 return;
 
-
-// switch (nt)
-// {
-//     case { Name: "Microsoft", NamespaceKind: NamespaceKind.Module }:
-//     case { Name: "System", NamespaceKind: NamespaceKind.Module }:
-//         return;
-// }
 SymbolTreeNode GenerateSymbolTree(ISymbol symbol)
 {
     var totallyQualifiedName = symbol.Name;
