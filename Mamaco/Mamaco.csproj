@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\AbstractRealizer\Realizer\Realizer\Realizer.csproj" />
+      <ProjectReference Include="..\tq-realizer\Tq.Realizer\Tq.Realizer.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,9 +1,13 @@
-﻿using Mamaco;
+﻿using System.Diagnostics;
+using Mamaco;
 using Microsoft.CodeAnalysis;
+using Tq.Realizer.Builder;
 
-string code = File.ReadAllText("../../../../test-code/main.cs");
+var basedir = "../../../../test-code/";
+var code = File.ReadAllText(Path.Combine(basedir, "main.cs"));
 
 var compiler = new CSharpCompiler();
+var compressor = new CSharpCompressor();
 compiler.Parse(code);
 compiler.Compile();
 
@@ -25,57 +29,13 @@ if (diagnostics.Any(e => e.Severity == DiagnosticSeverity.Error))
     Environment.Exit(1);
 }
 
+var realizerProgram = new ProgramBuilder();
 
-var globalnamespace = compiler.Compilation.GlobalNamespace;
+compressor.CompressModules(realizerProgram, compiler.Compilation.GlobalNamespace);
+compressor.ProcessReferences();
+compressor.ProcessFunctionBodies();
 
-var symbol_tree = GenerateSymbolTree(globalnamespace);
 
+File.WriteAllText(Path.Combine(basedir, "program.txt"), realizerProgram.ToString());
 Console.WriteLine("Build Finished Successfully!");
-return;
 
-SymbolTreeNode GenerateSymbolTree(ISymbol symbol)
-{
-    var totallyQualifiedName = symbol.Name;
-    var cur = symbol.ContainingSymbol;
-    while (cur is { IsImplicitlyDeclared: false })
-    {
-        if (!string.IsNullOrEmpty(cur.Name))
-            totallyQualifiedName = cur.Name + "." + totallyQualifiedName;
-        else
-            totallyQualifiedName = cur + "." + totallyQualifiedName;    
-        
-        cur = cur.ContainingSymbol;
-    }
-    
-    switch (symbol) {
-        case INamespaceOrTypeSymbol @nmsp:
-            
-            List<SymbolTreeNode> symbols = [];
-            foreach (var i in nmsp.GetMembers()) 
-                symbols.Add(GenerateSymbolTree(i));
-
-            return new SymbolTreeNode
-            {
-                global = totallyQualifiedName,
-                symbol = symbol,
-                children = symbols,
-            };
-            
-        default:
-            return new SymbolTreeNode
-            {
-                global = totallyQualifiedName,
-                symbol = symbol,
-                children = null,
-            };
-    }
-}
-
-struct SymbolTreeNode
-{
-    public string global;
-    public ISymbol symbol;
-    public List<SymbolTreeNode>? children;
-
-    public readonly override string ToString() => global;
-}

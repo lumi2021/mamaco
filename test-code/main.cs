@@ -2,10 +2,14 @@ namespace TestCode;
 
 public class Program() {
 
+    public static ulong TestField = 100;
+
     public static void Main()
     {
         Driving driving = new();
         driving.InMyCar(rightAfterABeer: true);
+
+        //Console.WriteLine(TestField);
     }
 }
 
