@@ -12,7 +12,7 @@
 	(struct "Test"
 		(func ".ctor" (no_body)))
 	(struct "Driving"
-		(field "_rightAfterABeer" (type u1))
+		(field "_rightAfterABeer" (type <nil>))
 		(func ".ctor" (no_body))
 		(func "InYourCar" (param "rightAfterABeer" u1)
 			(block $entry
@@ -28,11 +28,33 @@
 	(struct "FlagsAttribute"
 		(func ".ctor" (no_body)))
 	(struct "AttributeUsageAttribute"
+		(field "<AllowMultiple>k__BackingField" (type <nil>))
+		(field "<Inherited>k__BackingField" (type <nil>))
+		(prop "AllowMultiple"
+			(getter "System.AttributeUsageAttribute.get_AllowMultiple" () u1)
+			(setter "System.AttributeUsageAttribute.set_AllowMultiple" (u1) void))
+		(prop "Inherited"
+			(getter "System.AttributeUsageAttribute.get_Inherited" () u1)
+			(setter "System.AttributeUsageAttribute.set_Inherited" (u1) void))
 		(func ".ctor" (param "validOn" "System.AttributeTargets") (no_body))
-		(func "get_AllowMultiple" (ret u1) (no_body))
-		(func "set_AllowMultiple" (param "value" u1) (no_body))
-		(func "get_Inherited" (ret u1) (no_body))
-		(func "set_Inherited" (param "value" u1) (no_body)))
+		(func "get_AllowMultiple" (ret u1)
+			(block $entry
+				ret ld.self->"System.AttributeUsageAttribute.<AllowMultiple>k__BackingField")
+		)
+		(func "set_AllowMultiple" (param "value" u1)
+			(block $entry
+				ld.self->"System.AttributeUsageAttribute.<AllowMultiple>k__BackingField" = (arg 0)
+				ret)
+		)
+		(func "get_Inherited" (ret u1)
+			(block $entry
+				ret ld.self->"System.AttributeUsageAttribute.<Inherited>k__BackingField")
+		)
+		(func "set_Inherited" (param "value" u1)
+			(block $entry
+				ld.self->"System.AttributeUsageAttribute.<Inherited>k__BackingField" = (arg 0)
+				ret)
+		))
 	(struct "Reflection")
 	(struct "Type")
 	(struct "Attribute")

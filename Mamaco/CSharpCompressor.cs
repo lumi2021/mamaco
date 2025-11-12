@@ -20,7 +20,8 @@ public class CSharpCompressor
     private List<ModuleBuilder> _modules = [];
     private Dictionary<ProgramMemberBuilder, ISymbol> _symbolsMap_1 = [];
     private Dictionary<ISymbol, ProgramMemberBuilder> _symbolsMap_2 = [];
-
+    private Dictionary<ISymbol, FieldBuilder> _backing_field = [];
+    
     private enum ParseMode { Load, Store, Call, }
     
     public void CompressModules(ProgramBuilder program, INamespaceSymbol csGlobalNamespace, Compilation compilation)
@@ -88,6 +89,59 @@ public class CSharpCompressor
                     if (body == null) continue;
                     
                     ((FieldBuilder)builder).Initializer = ParseConstantValue(body);
+                } break;
+                
+                case IPropertySymbol propertySymbol:
+                {
+                    if (_backing_field.TryGetValue(propertySymbol, out var field))
+                    {
+                        var pbuilder = (PropertyBuilder)builder;
+                        var getter = pbuilder.Getter!;
+                        {
+                            var block = getter.CreateOmegaBytecodeBlock("entry");
+                            if (pbuilder is InstancePropertyBuilder)
+                            {
+                                block.Writer
+                                    .Ret(true)
+                                    .LdSelf()
+                                    .LdField((InstanceFieldBuilder)field);
+                            }
+                            else
+                            {
+                                block.Writer
+                                    .Ret(true)
+                                    .LdField((StaticFieldBuilder)field);
+                            }
+                        }
+                        
+                        var setter = pbuilder.Setter!;
+                        {
+                            var block = setter!.CreateOmegaBytecodeBlock("entry");
+                            if (pbuilder is InstancePropertyBuilder)
+                            {
+                                block.Writer
+                                    .LdSelf()
+                                    .StField((InstanceFieldBuilder)field)
+                                    .LdLocal(-1)
+                                    .Ret(false);
+                            }
+                            else
+                            {
+                                block.Writer
+                                    .StField((InstanceFieldBuilder)field)
+                                    .LdLocal(-1)
+                                    .Ret(false);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var node = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                        body = (node as PropertyDeclarationSyntax)?.Initializer?.Value;
+                        if (body == null) continue;
+                    
+                        ((PropertyBuilder)builder).Initializer = ParseConstantValue(body);
+                    }
                 } break;
                 
                 //AccessorDeclarationSyntax accessorDecl => accessorDecl.Body,
@@ -208,7 +262,8 @@ public class CSharpCompressor
 
             case IPropertySymbol @property:
             {
-                
+                var prop = parentBuilder.AddProperty(property.Name, property.IsStatic);
+                AddSymbol(property, prop);
             } break;
             
             default: throw new UnreachableException();
@@ -218,24 +273,9 @@ public class CSharpCompressor
     {
         switch (parentBuilder)
         {
-            case NamespaceBuilder nmsp:
-            {
-                foreach (var i in nmsp.Namespaces) ProcessReferencesRecursive(i);
-                foreach (var i in nmsp.Fields) ProcessReferencesRecursive(i);
-                foreach (var i in nmsp.Functions) ProcessReferencesRecursive(i);
-                foreach (var i in nmsp.Structures) ProcessReferencesRecursive(i);
-                foreach (var i in nmsp.TypeDefinitions) ProcessReferencesRecursive(i);
-            } break;
-            
-            case StructureBuilder sb:
-            {
-                foreach (var i in sb.InnerNamespaces) ProcessReferencesRecursive(i);
-                foreach (var i in sb.StaticFields) ProcessReferencesRecursive(i);
-                foreach (var i in sb.Fields) ProcessReferencesRecursive(i);
-                foreach (var i in sb.Functions) ProcessReferencesRecursive(i);
-                foreach (var i in sb.InnerStructures) ProcessReferencesRecursive(i);
-                foreach (var i in sb.InnerTypedefs) ProcessReferencesRecursive(i);
-            } break;
+            case INamespaceOrStructureOrTypedefBuilder @nst:
+                foreach (var i in nst.GetMembers()) ProcessReferencesRecursive(i);
+                break;
             
             case FieldBuilder fb:
             {
@@ -252,9 +292,24 @@ public class CSharpCompressor
                 
             } break;
 
-            case TypeDefinitionBuilder td:
+            case PropertyBuilder pb:
             {
-                foreach (var i in td.Functions) ProcessReferencesRecursive(i);
+                var symbol = (IPropertySymbol)SymbolsMap(pb);
+
+                var accessorsAreAuto =
+                    (symbol.GetMethod == null || symbol.GetMethod.IsImplicitlyDeclared || !HasBody(symbol.GetMethod)) &&
+                    (symbol.SetMethod == null || symbol.SetMethod.IsImplicitlyDeclared || !HasBody(symbol.SetMethod));
+
+                if (accessorsAreAuto)
+                {
+                    var bf = ((INamespaceOrStructureBuilder)pb.Parent!)
+                        .AddField($"<{pb.Symbol}>k__BackingField", pb is StaticPropertyBuilder);
+                    _backing_field.Add(symbol, bf);
+                }
+                
+                if (symbol.GetMethod != null) pb.Getter = (FunctionBuilder)SymbolsMap(symbol.GetMethod);
+                if (symbol.SetMethod != null) pb.Setter = (FunctionBuilder)SymbolsMap(symbol.SetMethod);
+                
             } break;
             
             default: throw new UnreachableException();
@@ -440,6 +495,14 @@ public class CSharpCompressor
     }
 
 
+    bool HasBody(IMethodSymbol method)
+    {
+        var syntaxRef = method.DeclaringSyntaxReferences.FirstOrDefault();
+        if (syntaxRef == null) return false;
+        var syntax = syntaxRef.GetSyntax();
+        return syntax is AccessorDeclarationSyntax { Body: not null };
+    }
+    
     private ISymbol RefOf(SyntaxNode node) => _compilation.GetSemanticModel(node.SyntaxTree).GetSymbolInfo(node).Symbol!;
     private ISymbol RefOf(VariableDeclaratorSyntax var) => _compilation.GetSemanticModel(var.SyntaxTree!).GetDeclaredSymbol(var)!;
     
