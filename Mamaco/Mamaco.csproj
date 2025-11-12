@@ -18,12 +18,19 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="System.Core.dll">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-      <None Update="System.Private.CoreLib.dll">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
+        <Content Include="Libs\**\*.cs">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Compile Remove="Libs\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="Libs\.idea\.gitignore" />
+      <Content Include="Libs\.idea\discord.xml" />
+      <Content Include="Libs\.idea\indexLayout.xml" />
+      <Content Include="Libs\.idea\projectSettingsUpdater.xml" />
+      <Content Include="Libs\.idea\vcs.xml" />
+      <Content Include="Libs\.idea\workspace.xml" />
     </ItemGroup>
 
 </Project>

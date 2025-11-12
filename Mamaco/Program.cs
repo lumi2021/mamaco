@@ -4,11 +4,18 @@ using Microsoft.CodeAnalysis;
 using Tq.Realizer.Builder;
 
 var basedir = "../../../../test-code/";
-var code = File.ReadAllText(Path.Combine(basedir, "main.cs"));
+var exeDir = AppContext.BaseDirectory;
+
+List<string> sources = [];
+
+sources.Add(File.ReadAllText(Path.Combine(basedir, "main.cs")));
+var libsSrc = Directory.EnumerateFiles(Path.Combine(exeDir, "Libs"), "*.cs", SearchOption.AllDirectories);
+sources.AddRange(libsSrc.Select(File.ReadAllText));
 
 var compiler = new CSharpCompiler();
 var compressor = new CSharpCompressor();
-compiler.Parse(code);
+
+foreach (var i in sources) compiler.Parse(i);
 compiler.Compile();
 
 var diagnostics = compiler.GetDiagnostics();
@@ -31,9 +38,9 @@ if (diagnostics.Any(e => e.Severity == DiagnosticSeverity.Error))
 
 var realizerProgram = new ProgramBuilder();
 
-compressor.CompressModules(realizerProgram, compiler.Compilation.GlobalNamespace);
+compressor.CompressModules(realizerProgram, compiler.Compilation.GlobalNamespace, compiler.Compilation);
 compressor.ProcessReferences();
-compressor.ProcessFunctionBodies();
+compressor.ProccessBodies();
 
 
 File.WriteAllText(Path.Combine(basedir, "program.txt"), realizerProgram.ToString());

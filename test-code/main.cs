@@ -15,7 +15,7 @@ public class Program() {
 
 class Test() { }
 class Driving() {
-    public void InYourCar(bool rightAfterABeer) => this.rightAfterABeer = rightAfterABeer;
-    public void InMyCar(bool rightAfterABeer) => this.rightAfterABeer = rightAfterABeer;
-    bool rightAfterABeer;
+    public void InYourCar(bool rightAfterABeer) => this._rightAfterABeer = rightAfterABeer;
+    public void InMyCar(bool rightAfterABeer) => _rightAfterABeer = rightAfterABeer;
+    bool _rightAfterABeer;
 }

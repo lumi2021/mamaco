@@ -1,29 +1,30 @@
 (module "TestCode"
 	(struct "Program"
-		(field static "TestField" (type u64))
+		(field static "TestField" (type u64) (i32 100))
 		(func ".ctor" (no_body))
-		(func "Main" (no_body))
-		(func ".cctor" (no_body)))
+		(func "Main"
+			(block $entry
+				$DEFINE_LOCAL "TestCode.Driving"
+				(local 0) = new "TestCode.Driving"
+				call "TestCode.Driving.InMyCar" (u1) void (i1 1)
+				ret)
+		))
 	(struct "Test"
 		(func ".ctor" (no_body)))
 	(struct "Driving"
-		(field "rightAfterABeer" (type u1))
+		(field "_rightAfterABeer" (type u1))
 		(func ".ctor" (no_body))
-		(func "InYourCar" (param "rightAfterABeer" u1) (no_body))
-		(func "InMyCar" (param "rightAfterABeer" u1) (no_body))))
-(module "<Module>")
-(module "Microsoft"
-	(namespace "CodeAnalysis"
-		(struct "EmbeddedAttribute"
-			(func ".ctor" (no_body)))))
+		(func "InYourCar" (param "rightAfterABeer" u1)
+			(block $entry
+				ld.self->"TestCode.Driving._rightAfterABeer" = (arg 0)
+				ret)
+		)
+		(func "InMyCar" (param "rightAfterABeer" u1)
+			(block $entry
+				ld.self->"TestCode.Driving._rightAfterABeer" = (arg 0)
+				ret)
+		)))
 (module "System"
-	(namespace "Runtime"
-		(namespace "CompilerServices"
-			(struct "IsReadOnlyAttribute"
-				(func ".ctor" (no_body)))
-			(struct "RefSafetyRulesAttribute"
-				(field "Version" (type i32))
-				(func ".ctor" (param "value" i32) (no_body)))))
 	(struct "FlagsAttribute"
 		(func ".ctor" (no_body)))
 	(struct "AttributeUsageAttribute"
@@ -32,16 +33,11 @@
 		(func "set_AllowMultiple" (param "value" u1) (no_body))
 		(func "get_Inherited" (ret u1) (no_body))
 		(func "set_Inherited" (param "value" u1) (no_body)))
-	(struct "Reflection"
-		(func ".ctor" (no_body)))
-	(struct "Type"
-		(func ".ctor" (no_body)))
-	(struct "Attribute"
-		(func ".ctor" (no_body)))
-	(struct "Decimal"
-		(func ".ctor" (no_body)))
-	(struct "Object"
-		(func ".ctor" (no_body)))
+	(struct "Reflection")
+	(struct "Type")
+	(struct "Attribute")
+	(struct "Decimal")
+	(struct "Object")
 	(typedef "AttributeTargets"
 		("Assembly" (i32 1))
 		("Module" (i32 2))

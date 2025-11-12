@@ -36,13 +36,11 @@ public class CSharpCompiler
     
     public void Compile()
     {
-
-        var system_path = Path.Combine(Path.GetDirectoryName(Environment.ProcessPath), "System.Private.CoreLib.dll");
         
         compilation = CSharpCompilation.Create(
             "Test",
             sources.Select(e => e.Item2),
-            [MetadataReference.CreateFromFile(system_path)],
+            [],
             new CSharpCompilationOptions(
                 outputKind: OutputKind.ConsoleApplication,
                 allowUnsafe: true)

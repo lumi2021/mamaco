@@ -2,7 +2,10 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Tq.Realizer.Builder;
+using Tq.Realizer.Builder.Language.Omega;
 using Tq.Realizer.Builder.ProgramMembers;
 using Tq.Realizer.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
@@ -12,17 +15,23 @@ namespace Mamaco;
 public class CSharpCompressor
 {
 
+    private Compilation _compilation;
+    
     private List<ModuleBuilder> _modules = [];
     private Dictionary<ProgramMemberBuilder, ISymbol> _symbolsMap_1 = [];
     private Dictionary<ISymbol, ProgramMemberBuilder> _symbolsMap_2 = [];
 
-    public void CompressModules(ProgramBuilder program, INamespaceSymbol csGlobalNamespace)
+    private enum ParseMode { Load, Store, Call, }
+    
+    public void CompressModules(ProgramBuilder program, INamespaceSymbol csGlobalNamespace, Compilation compilation)
     {
+        _compilation = compilation;
+        
         foreach (var csModule in csGlobalNamespace.GetMembers())
         {
             var module = program.AddModule(csModule.Name);
             _modules.Add(module);
-
+            
             var members = csModule.GetMembers();
             var namespaceBuilder = new StringBuilder();
             namespaceBuilder.Append(csModule.Name);
@@ -35,18 +44,65 @@ public class CSharpCompressor
     }
     public void ProcessReferences()
     {
-        foreach (var m in _modules) ProcessReferencesRecursive(m);
+        foreach (var m in _modules)
+            ProcessReferencesRecursive(m);
     }
-
-    public void ProcessFunctionBodies()
+    public void ProccessBodies()
     {
-        // TODO
+        foreach (var (symbol, builder) in _symbolsMap_2)
+        {
+
+            SyntaxNode? body;
+            
+            switch (symbol)
+            {
+                case INamespaceOrTypeSymbol: continue;
+                
+                case IMethodSymbol methodSymbol:
+                {
+                    var node = symbol.DeclaringSyntaxReferences
+                        .ToArray()
+                        .FirstOrDefault(e => e.GetSyntax() is MethodDeclarationSyntax);
+                    var methodDeclSyntax = node?.GetSyntax() as MethodDeclarationSyntax;
+                    body = (SyntaxNode?)methodDeclSyntax?.Body ?? methodDeclSyntax?.ExpressionBody!.Expression;
+                    if (body == null) continue;
+                    
+                    var funcBuilder = (FunctionBuilder)builder;
+                    var block = funcBuilder.CreateOmegaBytecodeBlock("entry");
+                    Dictionary<ISymbol, int> localsMap = [];
+
+                    for (var i = 0; i < methodSymbol.Parameters.Length; i++)
+                        localsMap.Add(methodSymbol.Parameters[i], -i - 1);
+                    
+                    if (body is BlockSyntax @b) ParseBlock(b, ref block, localsMap);
+                    else ParseExpression((ExpressionSyntax)body, ref block, localsMap, ParseMode.Load);
+
+                    if (!block.IsBlockFinished()) block.Writer.Ret(false);
+
+                } break;
+
+                case IFieldSymbol fieldSymbol:
+                {
+                    var node = symbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+                    body = (node as VariableDeclaratorSyntax)?.Initializer?.Value;
+                    if (body == null) continue;
+                    
+                    ((FieldBuilder)builder).Initializer = ParseConstantValue(body);
+                } break;
+                
+                //AccessorDeclarationSyntax accessorDecl => accessorDecl.Body,
+                //LocalFunctionStatementSyntax localFuncDecl => localFuncDecl.Body,
+                
+                default: throw new UnreachableException();
+            };
+        }
     }
     
     
     private void CompressMember(ISymbol csMember, INamespaceOrStructureBuilder parentBuilder, StringBuilder namespaceBuilder)
     {
         var globalIdentifier = $"{namespaceBuilder}.{csMember.Name}";
+        if (csMember is not INamespaceOrTypeSymbol && !csMember.DeclaringSyntaxReferences.Any()) return;
         
         switch (csMember)
         {
@@ -69,6 +125,8 @@ public class CSharpCompressor
             
             case IMethodSymbol @method:
             {
+                if (!method.DeclaringSyntaxReferences.Any()) return;
+                
                 var mt = parentBuilder.AddFunction(method.Name, method.IsStatic);
                 AddSymbol(method, mt);
             } break;
@@ -156,7 +214,6 @@ public class CSharpCompressor
             default: throw new UnreachableException();
         }
     }
-
     private void ProcessReferencesRecursive(ProgramMemberBuilder parentBuilder)
     {
         switch (parentBuilder)
@@ -169,12 +226,7 @@ public class CSharpCompressor
                 foreach (var i in nmsp.Structures) ProcessReferencesRecursive(i);
                 foreach (var i in nmsp.TypeDefinitions) ProcessReferencesRecursive(i);
             } break;
-
-            case FieldBuilder fb:
-            {
-                fb.Type = GetTypeReference(((IFieldSymbol)SymbolsMap(fb)).Type);
-            } break;
-
+            
             case StructureBuilder sb:
             {
                 foreach (var i in sb.InnerNamespaces) ProcessReferencesRecursive(i);
@@ -183,6 +235,11 @@ public class CSharpCompressor
                 foreach (var i in sb.Functions) ProcessReferencesRecursive(i);
                 foreach (var i in sb.InnerStructures) ProcessReferencesRecursive(i);
                 foreach (var i in sb.InnerTypedefs) ProcessReferencesRecursive(i);
+            } break;
+            
+            case FieldBuilder fb:
+            {
+                fb.Type = GetTypeReference(((IFieldSymbol)SymbolsMap(fb)).Type);
             } break;
 
             case FunctionBuilder fb:
@@ -203,8 +260,189 @@ public class CSharpCompressor
             default: throw new UnreachableException();
         }
     }
-    
 
+
+    private void ParseBlock(BlockSyntax node, ref OmegaBlockBuilder block,  Dictionary<ISymbol, int> localsMap)
+    {
+        foreach (var s in node.Statements)
+            ParseStatement(s, ref block, localsMap);
+    }
+    private void ParseStatement(StatementSyntax node, ref OmegaBlockBuilder block, Dictionary<ISymbol, int> localsMap)
+    {
+        switch (node)
+        {
+            case LocalDeclarationStatementSyntax localDeclaration:
+            {
+                var csVarType = RefOf(localDeclaration.Declaration.Type);
+                foreach (var variable in localDeclaration.Declaration.Variables)
+                {
+                    var csVarVal = variable.Initializer?.Value;
+                    var csVarInt = localsMap.Count;
+                    var csVarSymbol = (ILocalSymbol)RefOf(variable);
+                    
+                    localsMap.Add(csVarSymbol, csVarInt);
+                    block.Writer.MacroDefineLocal(GetTypeReference((ITypeSymbol)csVarType));
+                    
+                    if (csVarVal == null) continue;
+                    block.Writer.StLocal((short)csVarInt);
+                    ParseExpression(csVarVal, ref block, localsMap, ParseMode.Load);
+                }
+            } return;
+            
+            case ExpressionStatementSyntax exp:
+                ParseExpression(exp.Expression, ref block, localsMap, ParseMode.Load);
+                return;
+            
+            default: throw new UnreachableException();
+        }
+    }
+
+    private void ParseExpression(
+        ExpressionSyntax node,
+        ref OmegaBlockBuilder block,
+        Dictionary<ISymbol, int> localsMap,
+        ParseMode parseMode,
+        
+        bool explicitThisHandled = false)
+    {
+        switch (node)
+        {
+            case AssignmentExpressionSyntax: ParseExpression_Assingment(node, ref block, localsMap); break;
+            
+            case InvocationExpressionSyntax @invocation:
+            {
+                var exp = invocation.Expression;
+                var args = invocation.ArgumentList.Arguments;
+
+                var symbol = (IMethodSymbol)RefOf(exp);
+                var func = (FunctionBuilder)SymbolsMap(symbol);
+
+                block.Writer.Call(func);
+                foreach (var i in args)
+                    ParseExpression(i.Expression, ref block, localsMap, ParseMode.Load);
+
+            } break;
+
+            case LiteralExpressionSyntax @lit:
+            {
+                var v = ParseConstantValue(lit);
+                block.Writer.LdConst(v);
+            } break;
+
+            case ImplicitObjectCreationExpressionSyntax @iobj:
+            {
+                var type = SymbolsMap(((IMethodSymbol)RefOf(iobj)).ContainingSymbol);
+                switch (type)
+                {
+                    case StructureBuilder @stru: block.Writer.LdNewObject(stru); break;
+                }
+            } break;
+            case ObjectCreationExpressionSyntax @obj:
+            {
+                
+            } break;
+
+            case MemberAccessExpressionSyntax memberAccess:
+            {
+                var left = memberAccess.Expression;
+                var right = memberAccess.Name;
+                
+                ParseExpression(left, ref block, localsMap, ParseMode.Load);
+                ParseExpression(right, ref block, localsMap, parseMode,
+                    explicitThisHandled: left is ThisExpressionSyntax);
+            } break;
+            
+            case SimpleNameSyntax simpleName:
+            {
+                var memberSymbol = RefOf(simpleName);
+                
+                if (!explicitThisHandled && memberSymbol
+                         is IMethodSymbol
+                         or IPropertySymbol
+                         or IFieldSymbol
+                         or IEventSymbol
+                     && !memberSymbol.IsStatic) block.Writer.LdSelf();
+                
+                switch (memberSymbol)
+                {
+                    case IFieldSymbol @field:
+                    {
+                        switch (parseMode)
+                        {
+                            case ParseMode.Load: block.Writer.LdField((InstanceFieldBuilder)SymbolsMap(field)); break;
+                            case ParseMode.Store: block.Writer.StField((InstanceFieldBuilder)SymbolsMap(field)); break;
+                            default: throw new UnreachableException();
+                        }
+                    } break;
+
+                    case IParameterSymbol @arg:
+                        switch (parseMode)
+                        {
+                            case ParseMode.Load: block.Writer.LdLocal((short)localsMap[arg]); break;
+                            case ParseMode.Store: block.Writer.StLocal((short)localsMap[arg]); break;
+                            default: throw new UnreachableException();
+                        }
+                        break;
+                    
+                    default: throw new UnreachableException();
+                }
+            } break;
+            
+            case ThisExpressionSyntax:
+                block.Writer.LdSelf();
+                break;
+                
+            
+            default: throw new UnreachableException();
+        }
+    }
+
+    private void ParseExpression_Assingment(ExpressionSyntax node, ref OmegaBlockBuilder block, Dictionary<ISymbol, int> localsMap)
+    {
+        switch (node)
+        {
+            case AssignmentExpressionSyntax assignment:
+            {
+                var target = assignment.Left;
+                var val = assignment.Right;
+                
+                ParseExpression(target, ref block, localsMap, ParseMode.Store);
+                ParseExpression(val,  ref block, localsMap, ParseMode.Load);
+            } break;
+            
+            default: throw new UnreachableException();
+        }
+    }
+
+    private RealizerConstantValue ParseConstantValue(object? value)
+    {
+        return value switch
+        {
+            null => new NullConstantValue(),
+
+            bool @v => new IntegerConstantValue(1, v ? 1 : 0),
+            
+            sbyte @v => new IntegerConstantValue(8, v),
+            byte @v => new IntegerConstantValue(8, v),
+            short @v => new IntegerConstantValue(16, v),
+            ushort @v => new IntegerConstantValue(16, v),
+            int @v => new IntegerConstantValue(32, v),
+            uint @v => new IntegerConstantValue(32, v),
+            long @v => new IntegerConstantValue(64, v),
+            ulong @v => new IntegerConstantValue(64, v),
+            Int128 @v => new IntegerConstantValue(128, v),
+            UInt128 @v => new IntegerConstantValue(128, v),
+
+            LiteralExpressionSyntax @lit => ParseConstantValue(lit.Token.Value),
+            
+            _ => throw new UnreachableException()
+        };
+    }
+
+
+    private ISymbol RefOf(SyntaxNode node) => _compilation.GetSemanticModel(node.SyntaxTree).GetSymbolInfo(node).Symbol!;
+    private ISymbol RefOf(VariableDeclaratorSyntax var) => _compilation.GetSemanticModel(var.SyntaxTree!).GetDeclaredSymbol(var)!;
+    
     private TypeReference GetTypeReference(ITypeSymbol typeSymbol)
     {
         IEnumerable<ISymbol> globalParts = [..typeSymbol.ContainingNamespace.ConstituentNamespaces, typeSymbol];
@@ -237,26 +475,7 @@ public class CSharpCompressor
 
         throw new UnreachableException();
     }
-    private RealizerConstantValue ParseConstantValue(object? value)
-    {
-        return value switch
-        {
-            null => new NullConstantValue(),
 
-            sbyte @v => new IntegerConstantValue(8, v),
-            byte @v => new IntegerConstantValue(8, v),
-            short @v => new IntegerConstantValue(16, v),
-            ushort @v => new IntegerConstantValue(16, v),
-            int @v => new IntegerConstantValue(32, v),
-            uint @v => new IntegerConstantValue(32, v),
-            long @v => new IntegerConstantValue(64, v),
-            ulong @v => new IntegerConstantValue(64, v),
-            Int128 @v => new IntegerConstantValue(128, v),
-            UInt128 @v => new IntegerConstantValue(128, v),
-
-            _ => throw new UnreachableException()
-        };
-    }
 
     private void AddSymbol(ISymbol symbol, ProgramMemberBuilder builder)
     {
