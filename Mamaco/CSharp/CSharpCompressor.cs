@@ -21,6 +21,8 @@ public class CSharpCompressor
     private Dictionary<ProgramMemberBuilder, ISymbol> _symbolsMap_1 = [];
     private Dictionary<ISymbol, ProgramMemberBuilder> _symbolsMap_2 = [];
     private Dictionary<ISymbol, FieldBuilder> _backing_field = [];
+
+    private Dictionary<IntrinsincAttributes, ISymbol> _intrinsincsMap = [];
     
     private enum ParseMode { Load, Store, Call, }
     
@@ -180,6 +182,8 @@ public class CSharpCompressor
             case IMethodSymbol @method:
             {
                 if (!method.DeclaringSyntaxReferences.Any()) return;
+
+                var attributes = method.GetAttributes();
                 
                 var mt = parentBuilder.AddFunction(method.Name, method.IsStatic);
                 AddSymbol(method, mt);
@@ -296,6 +300,8 @@ public class CSharpCompressor
             {
                 var symbol = (IPropertySymbol)SymbolsMap(pb);
 
+                pb.Type = GetTypeReference(symbol.Type);
+                
                 var accessorsAreAuto =
                     (symbol.GetMethod == null || symbol.GetMethod.IsImplicitlyDeclared || !HasBody(symbol.GetMethod)) &&
                     (symbol.SetMethod == null || symbol.SetMethod.IsImplicitlyDeclared || !HasBody(symbol.SetMethod));
@@ -304,6 +310,7 @@ public class CSharpCompressor
                 {
                     var bf = ((INamespaceOrStructureBuilder)pb.Parent!)
                         .AddField($"<{pb.Symbol}>k__BackingField", pb is StaticPropertyBuilder);
+                    bf.Type = pb.Type;
                     _backing_field.Add(symbol, bf);
                 }
                 
@@ -527,13 +534,19 @@ public class CSharpCompressor
             case "System.UInt64": return new IntegerTypeReference(false, 64);
             case "System.Int128": return new IntegerTypeReference(true, 128);
             case "System.UInt128": return new IntegerTypeReference(false, 128);
+            
+            case "System.String": return new SliceTypeReference(new IntegerTypeReference(false, 8));
         }
 
-        var langmember = SymbolsMap(typeSymbol);
+        ProgramMemberBuilder langmember;
+        
+        if (typeSymbol is INamedTypeSymbol @nts) langmember = SymbolsMap(nts.OriginalDefinition);
+        else langmember = SymbolsMap(typeSymbol);
+        
         switch (langmember)
         {
             case StructureBuilder @struc: return new NodeTypeReference(struc);
-            case TypeDefinitionBuilder @typedef: return new NodeTypeReference(typedef);
+            case TypedefBuilder @typedef: return new NodeTypeReference(typedef);
         }
 
         throw new UnreachableException();
@@ -547,4 +560,21 @@ public class CSharpCompressor
     }
     private ISymbol SymbolsMap(ProgramMemberBuilder builder) =>  _symbolsMap_1[builder];
     private ProgramMemberBuilder SymbolsMap(ISymbol symbol) =>  _symbolsMap_2[symbol];
+
+
+    private enum IntrinsincAttributes
+    {
+        TypeByte, TypeSByte,
+        TypeUInt8, TypeInt8,
+        TypeUInt16, TypeInt16,
+        TypeUInt32, TypeInt32,
+        TypeUInt64, TypeInt64,
+        
+        TypeFloat, TypeDouble,
+        
+        TypeBoolean,
+        TypeString,
+        
+        AttributeExport,
+    }
 }

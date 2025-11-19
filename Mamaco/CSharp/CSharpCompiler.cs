@@ -43,7 +43,8 @@ public class CSharpCompiler
             [],
             new CSharpCompilationOptions(
                 outputKind: OutputKind.ConsoleApplication,
-                allowUnsafe: true)
+                allowUnsafe: true,
+                nullableContextOptions: NullableContextOptions.Annotations)
         );
     }
 

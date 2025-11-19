@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AbstractRealizer\Realizer\Realizer\Realizer.csproj" />
+      <ProjectReference Include="..\RealizerModules\target-LLVM\Tq.Module.LLVM\Tq.Module.LLVM.csproj" />
       <ProjectReference Include="..\tq-realizer\Tq.Realizer\Tq.Realizer.csproj" />
     </ItemGroup>
 
@@ -31,6 +31,10 @@
       <Content Include="Libs\.idea\projectSettingsUpdater.xml" />
       <Content Include="Libs\.idea\vcs.xml" />
       <Content Include="Libs\.idea\workspace.xml" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Libs\System\Core\" />
     </ItemGroup>
 
 </Project>

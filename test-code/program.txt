@@ -4,15 +4,12 @@
 		(func ".ctor" (no_body))
 		(func "Main"
 			(block $entry
-				$DEFINE_LOCAL "TestCode.Driving"
-				(local 0) = new "TestCode.Driving"
-				call "TestCode.Driving.InMyCar" (u1) void (i1 1)
 				ret)
 		))
 	(struct "Test"
 		(func ".ctor" (no_body)))
 	(struct "Driving"
-		(field "_rightAfterABeer" (type <nil>))
+		(field "_rightAfterABeer" (type u1))
 		(func ".ctor" (no_body))
 		(func "InYourCar" (param "rightAfterABeer" u1)
 			(block $entry
@@ -28,12 +25,12 @@
 	(struct "FlagsAttribute"
 		(func ".ctor" (no_body)))
 	(struct "AttributeUsageAttribute"
-		(field "<AllowMultiple>k__BackingField" (type <nil>))
-		(field "<Inherited>k__BackingField" (type <nil>))
-		(prop "AllowMultiple"
+		(field "<AllowMultiple>k__BackingField" (type u1))
+		(field "<Inherited>k__BackingField" (type u1))
+		(prop "AllowMultiple" u1
 			(getter "System.AttributeUsageAttribute.get_AllowMultiple" () u1)
 			(setter "System.AttributeUsageAttribute.set_AllowMultiple" (u1) void))
-		(prop "Inherited"
+		(prop "Inherited" u1
 			(getter "System.AttributeUsageAttribute.get_Inherited" () u1)
 			(setter "System.AttributeUsageAttribute.set_Inherited" (u1) void))
 		(func ".ctor" (param "validOn" "System.AttributeTargets") (no_body))

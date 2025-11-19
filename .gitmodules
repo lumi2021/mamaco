@@ -1,3 +1,6 @@
 [submodule "tq-realizer"]
 	path = tq-realizer
 	url = git@github.com:tqlang/tq-realizer.git
+[submodule "RealizerModules/target-LLVM"]
+	path = RealizerModules/target-LLVM
+	url = git@github.com:tqlang/target-LLVM.git
