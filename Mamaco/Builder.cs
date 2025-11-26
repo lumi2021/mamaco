@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
+using Tq.Realizeer.Core.Program;
+using Tq.Realizeer.Core.Program.Builder;
 using Tq.Realizer;
-using Tq.Realizer.Builder;
+using Tq.Realizer.Core.Builder;
 
 namespace Mamaco;
 
@@ -23,8 +25,8 @@ public static class Builder
 
         Console.WriteLine($"{sources.Count} sources found");
 
-        var compiler = new CSharpCompiler();
-        var compressor = new CSharpCompressor();
+        var compiler = new CSharpCompilerUnit();
+        var compressor = new CSharpCompressorUnit();
 
         foreach (var i in sources) compiler.Parse(i);
         compiler.Compile();
@@ -46,14 +48,13 @@ public static class Builder
             Console.WriteLine("\nBuild Failed!");
             Environment.Exit(1);
         }
-
-        var realizerProgram = new ProgramBuilder();
-
+        
+        var realizerProgram = new RealizerProgram("placeholder");
+        
         compressor.CompressModules(realizerProgram, compiler.Compilation.GlobalNamespace, compiler.Compilation);
         compressor.ProcessReferences();
         compressor.ProccessBodies();
 
-        File.WriteAllText(Path.Combine(".abs-cache/debug/", "program.txt"), realizerProgram.ToString());
         
         LoadModules();
         var realizerProcessor = new RealizerProcessor

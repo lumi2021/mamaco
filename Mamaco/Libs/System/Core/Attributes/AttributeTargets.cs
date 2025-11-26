@@ -1,7 +1,7 @@
 namespace System;
 
 [Flags]
-public enum AttributeTargets
+public enum AttributeTargets : int
 {
     Assembly        = 0x0001,
     Module          = 0x0002,

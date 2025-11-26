@@ -2,7 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Mamaco;
 using Microsoft.CodeAnalysis;
-using Tq.Realizer.Builder;
+using Tq.Realizer.Core.Builder;
 
 internal class Program
 {

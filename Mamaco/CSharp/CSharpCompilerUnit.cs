@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Mamaco;
 
-public class CSharpCompiler
+public class CSharpCompilerUnit
 {
 
     private List<(SyntaxTree, SyntaxTree, (int, int)[])> sources = [];
@@ -76,19 +76,25 @@ public class CSharpCompiler
                 if (newBegin < 0) newBegin = 0;
                 if (newEnd < 0) newEnd = 0;
 
-                var newloc = Location.Create(
-                    treeData.Item1,
-                    TextSpan.FromBounds(newBegin, newEnd));
+                var newloc = Location.Create(treeData.Item1, TextSpan.FromBounds(newBegin, newEnd));
 
                 var d = Diagnostic.Create(
-                    diagnostic.Descriptor,
+                    new DiagnosticDescriptor(
+                        diagnostic.Descriptor.Id,
+                        diagnostic.Descriptor.Title,
+                        diagnostic.GetMessage(),
+                        diagnostic.Descriptor.Category,
+                        diagnostic.Descriptor.DefaultSeverity,
+                        diagnostic.Descriptor.IsEnabledByDefault),
+                    
                     newloc,
-                    diagnostic.GetMessage(),
+                    [],
                     diagnostic.Properties,
                     diagnostic.Severity);
 
                 processed.Add(d);
             }
+            
             else processed.Add(diagnostic);
         }
         
@@ -115,7 +121,7 @@ public class CSharpCompiler
             var newSpan = node.Modifiers.Span;
 
             var beggin = oldSpan.Start;
-            var offset = newSpan.End - oldSpan.End;
+            var offset =  oldSpan.End - newSpan.End;
             spanShift.Add((beggin, offset));
 
             return base.VisitClassDeclaration(node)!;
@@ -135,7 +141,7 @@ public class CSharpCompiler
             var newSpan = node.Modifiers.Span;
 
             var beggin = oldSpan.Start;
-            var offset = newSpan.End - oldSpan.End;
+            var offset = oldSpan.End - newSpan.End;
             spanShift.Add((beggin, offset));
 
             return base.VisitMethodDeclaration(node)!;

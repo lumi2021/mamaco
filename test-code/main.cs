@@ -9,12 +9,10 @@ public class Program() {
     [Export]
     public static void Main()
     {
-        //Driving driving = new();
-        //driving.InMyCar(rightAfterABeer: true);
-
-        //var a = 2 + 2;
-
-        //Console.WriteLine(TestField);
+        Console.WriteLine(TestField);
+        TestField = 5 + 10;
+        TestField *= 10;
+        Console.WriteLine(TestField);
     }
 }
 
