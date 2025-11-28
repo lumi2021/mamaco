@@ -26,9 +26,9 @@ public class RealizerProperty: RealizerMember
         var sb = new StringBuilder();
 
         sb.Append($"property {Type?.ToString() ?? "void"} @{Name}");
-        sb.Append(" {");
-        if (Getter != null) sb.Append($" get = {Getter}");
-        if (Setter != null) sb.Append($" set = {Setter}");
+        sb.Append(" { ");
+        if (Getter != null) sb.Append($"get = {Getter} ");
+        if (Setter != null) sb.Append($"set = {Setter} ");
         sb.Append("}");
         if (Initializer != null) sb.Append($" = {Initializer}");
         

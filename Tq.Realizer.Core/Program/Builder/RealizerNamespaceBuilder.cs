@@ -11,6 +11,6 @@ public struct RealizerNamespaceBuilder
         return new RealizerNamespaceBuilder { _baseSymbol = baseSymbol };
     }
 
-    public RealizerNamespace Build() => new RealizerNamespace(_baseSymbol);
+    public RealizerNamespace Build() => new(_baseSymbol);
     
 }

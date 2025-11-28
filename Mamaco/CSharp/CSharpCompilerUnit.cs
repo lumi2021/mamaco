@@ -15,7 +15,7 @@ public class CSharpCompilerUnit
     
     public CSharpCompilation Compilation => compilation;
     
-    public void Parse(string source)
+    public void Parse(string source, string path)
     {
         var parseOptions = new CSharpParseOptions(
             LanguageVersion.Latest,
@@ -24,7 +24,7 @@ public class CSharpCompilerUnit
             []
         );
 
-        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions, path);
         var root = syntaxTree.GetRoot();
         
         var rewriter = new SyntaxPreprocessor();

@@ -1,5 +1,6 @@
 using System.Text;
 using Tq.Realizeer.Core.Program.Member;
+using Tq.Realizer.Core.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
 using i16 = short;
 using u1 = bool;
@@ -72,35 +73,42 @@ public static class OmegaInstructions
         public override string ToString() => $"{Left} = {Right}";
     }
     
-    public readonly struct Call(IOmegaCallable c, params IOmegaValue[] args) : IOmegaValue
+    // Expressions
+    public readonly struct Alloca(TypeReference type) : IOmegaValue
     {
+        public readonly TypeReference Type = type;
+        public override string ToString() => $"alloca {Type}";
+    }
+    public readonly struct Call(TypeReference? type, IOmegaCallable c, params IOmegaValue[] args) : IOmegaValue
+    {
+        public readonly TypeReference? Type = type;
         public readonly IOmegaCallable Callable = c;
         public readonly IOmegaValue[] Arguments = args;
         public override string ToString()
         {
             var sb = new StringBuilder();
 
-            sb.Append(Callable);
-            sb.Append(" (");
-            string.Join(", ", Arguments);
+            sb.Append($"call {Type?.ToString() ?? "void"} {Callable}");
+            sb.Append("(");
+            sb.Append(string.Join(", ", Arguments));
             sb.Append(')');
             
             return sb.ToString();
         }
     }
-    
-    // Expressions
-    public readonly struct Add(IOmegaValue l, IOmegaValue r) : IOmegaValue
+    public readonly struct Add(TypeReference type, IOmegaValue l, IOmegaValue r) : IOmegaValue
     {
+        public readonly TypeReference Type = type;
         public readonly IOmegaValue Left = l;
         public readonly IOmegaValue Right = r;
-        public override string ToString() => $"{Left} + {Right}";
+        public override string ToString() => $"{Type} add {Left}, {Right}";
     }
-    public readonly struct Mul(IOmegaValue l, IOmegaValue r) : IOmegaValue
+    public readonly struct Mul(TypeReference type, IOmegaValue l, IOmegaValue r) : IOmegaValue
     {
+        public readonly TypeReference Type = type;
         public readonly IOmegaValue Left = l;
         public readonly IOmegaValue Right = r;
-        public override string ToString() => $"{Left} * {Right}";
+        public override string ToString() => $"{Type} mul {Left}, {Right}";
     }
     
     // Control flow
@@ -109,5 +117,9 @@ public static class OmegaInstructions
         public readonly IOmegaValue? Value = value;
         public override string ToString() => "ret" + (Value == null ? "" : $" {Value}");
     }
+    public readonly struct Throw(IOmegaValue fault) : IOmegaBranch
+    {
+        public readonly IOmegaValue Fault = fault;
+        public override string ToString() => $"throw {Fault}";
+    }
 }
-

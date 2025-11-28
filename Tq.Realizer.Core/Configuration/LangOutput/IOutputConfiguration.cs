@@ -3,7 +3,7 @@ namespace Tq.Realizer.Core.Configuration.LangOutput;
 public interface IOutputConfiguration
 {
     public bool BakeGenerics { get; init; }
-    public UnnestMembersFlags UnnestMembers { get; init; }
+    public UnnestMembersOptions UnnestMembersOption { get; init; }
     
     
     public byte MemoryUnit { get; init; }
@@ -28,29 +28,9 @@ public enum GenericAllowedFeatures
 }
 
 [Flags]
-public enum UnnestMembersFlags
+public enum UnnestMembersOptions
 {
-    None = 0,
-    All = Namespaces
-        | Structures
-        | Typedefs
-        | StaticFunctions
-        | InstanceFunctions
-        | StaticFields
-    //  | InstanceFields
-        | StaticProperties
-        | InstanceProperties,
-    
-    Namespaces = 1 << 0,
-    Structures = 1 << 1,
-    Typedefs   = 1 << 2,
-    
-    StaticFunctions    = 1 << 3,
-    InstanceFunctions  = 1 << 4,
-    
-    StaticFields       = 1 << 5,
-    //InstanceFields     = 1 << 6,
-    
-    StaticProperties   = 1 << 7,
-    InstanceProperties = 1 << 8,
+    None = 1 << 0,
+    NoNamespaces = 1 << 1,
+    ForceStaticFunctions = 1 << 2,
 }

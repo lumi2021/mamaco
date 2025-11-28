@@ -3,7 +3,7 @@ namespace Tq.Realizer.Core.Configuration.LangOutput;
 public struct BetaOutputConfiguration : IOutputConfiguration
 {
     public bool BakeGenerics { get; init; }
-    public UnnestMembersFlags UnnestMembers { get; init; }
+    public UnnestMembersOptions UnnestMembersOption { get; init; }
     
     public byte MemoryUnit { get; init; }
     public byte NativeIntegerSize { get; init; }

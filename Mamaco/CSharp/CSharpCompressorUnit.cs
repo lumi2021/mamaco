@@ -26,11 +26,12 @@ public class CSharpCompressorUnit
     private Dictionary<RealizerMember, ISymbol> _symbolsMap_1 = [];
     private Dictionary<ISymbol, RealizerMember> _symbolsMap_2 = [];
     private Dictionary<IParameterSymbol, RealizerParameter> _symbolsMap_3 = [];
+    
+    private Dictionary<IntrinsincElements, ISymbol> _intrinsincsMap_1 = [];
+    private Dictionary<ISymbol, IntrinsincElements> _intrinsincsMap_2 = [];
+    
     private Dictionary<ISymbol, RealizerField> _backingField = [];
 
-    private Dictionary<IntrinsincElements, ISymbol> _intrinsincsMap = [];
-    
-    private enum ParseMode { Load, Store, Call, }
     
     
     public void CompressModules(RealizerProgram program, INamespaceSymbol csGlobalNamespace, Compilation compilation)
@@ -40,9 +41,7 @@ public class CSharpCompressorUnit
         
         foreach (var csModule in csGlobalNamespace.GetMembers())
         {
-            var module = RealizerNamespaceBuilder
-                .Create(csModule.Name)
-                .Build();
+            var module = RealizerModuleBuilder.Create(csModule.Name).Build();
             program.AddModule(module);
             
             var members = csModule.GetMembers();
@@ -57,7 +56,16 @@ public class CSharpCompressorUnit
     }
     public void ProcessReferences()
     {
-        foreach (var m in _program.Modules) ProcessReferencesRecursive(m);
+        foreach (var m in _program.Modules)
+        {
+            ProcessReferencesRecursive(m);
+            
+            var cancelToken = new CancellationTokenSource().Token;
+            var entryPoint = _compilation.GetEntryPoint(cancelToken);
+            if (entryPoint == null) continue;
+            var func = (RealizerFunction)SymbolsMap(entryPoint);
+            func.Export("_start");
+        }
     }
     public void ProccessBodies()
     {
@@ -70,14 +78,12 @@ public class CSharpCompressorUnit
             {
                 case INamespaceOrTypeSymbol: continue;
                 
-                case IMethodSymbol methodSymbol:
+                case IMethodSymbol methodSymbol when methodSymbol.MethodKind == MethodKind.Constructor:
                 {
-                    var node = symbol.DeclaringSyntaxReferences
-                        .ToArray()
-                        .FirstOrDefault(e => e.GetSyntax() is MethodDeclarationSyntax);
+                    var node = symbol.DeclaringSyntaxReferences.ToArray().FirstOrDefault();
                     var methodDeclSyntax = node?.GetSyntax() as MethodDeclarationSyntax;
                     body = (SyntaxNode?)methodDeclSyntax?.Body ?? methodDeclSyntax?.ExpressionBody!.Expression;
-                    if (body == null) continue;
+                    if (node == null) continue;
                     
                     var func = (RealizerFunction)builder;
                     var cell = func.AddOmegaCodeCell("entry");
@@ -85,12 +91,73 @@ public class CSharpCompressorUnit
         
                     for (var i = 0; i < methodSymbol.Parameters.Length; i++)
                         localsMap.Add(methodSymbol.Parameters[i], -i - 1);
+
+                    var instancet = GetTypeReference(methodSymbol.ReceiverType!);
+                    var instancep = func.AddParameter(".instance", instancet, 0);
                     
-                    if (body is BlockSyntax @b) ParseBlock(b, ref cell, localsMap);
-                    else ParseExpression((ExpressionSyntax)body, ref cell, localsMap, ParseMode.Load);
+                    var s = node.GetSyntax();
+                    switch (s)
+                    {
+                        case ClassDeclarationSyntax @classDec:
+                        {
+                            // TODO
+                            var a = classDec.BaseList;
+                        } break;
+
+                        case ConstructorDeclarationSyntax @constructorDec:
+                        {
+                            if (constructorDec.Initializer != null)
+                            {
+                                var baseRef = SymbolsMap(RefOf(constructorDec.Initializer));
+                                cell.Writer.Call(null, new Member(baseRef),
+                                    [new Argument(instancep), ..constructorDec.Initializer.ArgumentList.Arguments
+                                    .Select(e => ParseExpression(e.Expression, ref cell, []))]
+                                );
+                            }
+                        } break;
+                        
+                        default: throw new UnreachableException();
+                    }
+
+                    if (body != null)
+                    {
+                        if (body is BlockSyntax @b) ParseBlock(b, ref cell, localsMap);
+                        else
+                        {
+                            var x = ParseExpression((ExpressionSyntax)body, ref cell, localsMap);
+                            if (x != null) cell.Writer.Ret(x);
+                        }
+                    
+                        if (!cell.IsFinished()) cell.Writer.Ret();
+                    }
+                } break;
+                
+                case IMethodSymbol methodSymbol:
+                {
+                    var node = symbol.DeclaringSyntaxReferences.ToArray().FirstOrDefault();
+                    var methodDeclSyntax = node?.GetSyntax() as MethodDeclarationSyntax;
+                    body = (SyntaxNode?)methodDeclSyntax?.Body ?? methodDeclSyntax?.ExpressionBody!.Expression;
+                    if (node == null) continue;
+                    
+                    var func = (RealizerFunction)builder;
+                    Dictionary<ISymbol, int> localsMap = [];
         
-                    if (!cell.IsFinished()) cell.Writer.Ret();
-        
+                    for (var i = 0; i < methodSymbol.Parameters.Length; i++)
+                        localsMap.Add(methodSymbol.Parameters[i], -i - 1);
+                    
+                    if (body != null)
+                    {
+                        var cell = func.AddOmegaCodeCell("entry");
+                        
+                        if (body is BlockSyntax @b) ParseBlock(b, ref cell, localsMap);
+                        else
+                        {
+                            var x = ParseExpression((ExpressionSyntax)body, ref cell, localsMap);
+                            if (x != null) cell.Writer.Ret(x);
+                        }
+                    
+                        if (!cell.IsFinished()) cell.Writer.Ret();
+                    }
                 } break;
         
                 case IFieldSymbol fieldSymbol:
@@ -107,27 +174,32 @@ public class CSharpCompressorUnit
                     if (_backingField.TryGetValue(propertySymbol, out var field))
                     {
                         var pbuilder = (RealizerProperty)builder;
-                        var getter = pbuilder.Getter!;
-                        {
+                        var getter = pbuilder.Getter;
+                        if (getter != null) {
                             var block = getter.AddOmegaCodeCell("entry");
                             if (pbuilder.Static) block.Writer.Ret(new Member(field));
-                            else block.Writer.Ret(new Access(new Self(), new Member(field)));
+                            else block.Writer
+                                .Ret(new Access(new Self(), new Member(field)));
                         }
                         
-                        var setter = pbuilder.Setter!;
-                        {
+                        var setter = pbuilder.Setter;
+                        if (setter != null) {
                             var block = setter!.AddOmegaCodeCell("entry");
                             if (pbuilder.Static)
                             {
-                                block.Writer.Assignment(
-                                    new Member(field),
-                                    new Argument(setter.Parameters[0]));
+                                block.Writer
+                                    .Assignment(
+                                        new Member(field),
+                                        new Argument(setter.Parameters[0]))
+                                    .Ret();
                             }
                             else
                             {
-                                block.Writer.Assignment(
-                                    new Access(new Self(), new Member(field)),
-                                    new Argument(setter.Parameters[0]));
+                                block.Writer
+                                    .Assignment(
+                                        new Access(new Self(), new Member(field)),
+                                        new Argument(setter.Parameters[0]))
+                                    .Ret();
                             }
                         }
                     }
@@ -151,157 +223,162 @@ public class CSharpCompressorUnit
     
     private void CompressMember(ISymbol csMember, RealizerContainer parent, StringBuilder namespaceBuilder)
     {
-    var globalIdentifier = $"{namespaceBuilder}.{csMember.Name}";
-    if (csMember is not INamespaceOrTypeSymbol && !csMember.DeclaringSyntaxReferences.Any()) return;
-    
-    switch (csMember)
-    {
-        case INamespaceSymbol @nmsp:
-        {
-            var newNmsp = RealizerNamespaceBuilder
-                .Create(@nmsp.Name)
-                .Build();
-            
-            parent.AddMember(newNmsp);
-            AddSymbol(nmsp, newNmsp);
-    
-            var stackpoint = namespaceBuilder.Length;
-            namespaceBuilder.Append($".{nmsp.Name}");
-            foreach (var i in nmsp.GetMembers()) CompressMember(i, newNmsp, namespaceBuilder);
-            namespaceBuilder.Length = stackpoint;
-        } break;
-    
-        case IFieldSymbol @field:
-        {
-            var fd = RealizerFieldBuilder
-                .Create(field.Name)
-                .SetStatic(field.IsStatic)
-                .Build();
-            
-            parent.AddMember(fd);
-            AddSymbol(field, fd);
-        } break;
+        var globalIdentifier = $"{namespaceBuilder}.{csMember.Name}";
+        if (csMember is not INamespaceOrTypeSymbol && !csMember.DeclaringSyntaxReferences.Any()) return;
         
-        case IMethodSymbol @method:
+        switch (csMember)
         {
-            if (!method.DeclaringSyntaxReferences.Any()) return;
-    
-            var mt = RealizerFunctionBuilder.Create(method.Name)
-                .SetStatic(method.IsStatic)
-                .Build();
-            
-            parent.AddMember(mt);
-            AddSymbol(method, mt);
-        } break;
-        
-        case ITypeSymbol @typeClass:
-        {
-            switch (typeClass.TypeKind)
+            case INamespaceSymbol @nmsp:
             {
-                case TypeKind.Class:
-                case TypeKind.Struct:
-                {
-                    switch (globalIdentifier)
-                    {
-                        //case "System.Object":
-                        //case "System.ValueType":
-                        case "System.Enum":
-                            
-                        case "System.Byte":
-                        case "System.SByte":
-                        case "System.Int16":
-                        case "System.UInt16":
-                        case "System.Int32":
-                        case "System.UInt32":
-                        case "System.Int64":
-                        case "System.UInt64":
-                        case "System.Int128":
-                        case "System.UInt128":
-                        case "System.IntPtr":
-                        case "System.UIntPtr":
-                            
-                        case "System.Char":
-                        case "System.String":
-                        case "System.Boolean":
-                            
-                        case "System.Single":
-                        case "System.Double":
-                            
-                        case "System.Void":
-                            return;
-                    }
-                    
-                    RealizerContainer ty = !typeClass.IsStatic
-                        ? RealizerStructureBuilder.Create(typeClass.Name).Build()
-                        : RealizerNamespaceBuilder.Create(typeClass.Name).Build();
-                    
-                    parent.AddMember(ty);
-                    AddSymbol(typeClass, ty);
-                    
-                    var stackpoint = namespaceBuilder.Length;
-                    namespaceBuilder.Append($".{typeClass.Name}");
-                    foreach (var i in typeClass.GetMembers()) CompressMember(i, ty, namespaceBuilder);
-                    namespaceBuilder.Length = stackpoint;
-                } break;
-    
-                case TypeKind.Enum:
-                {
-                    var tdb = RealizerTypedefBuilder.Create(typeClass.Name);
-                    List<RealizerFunction> functions = [];
-                    
-                    foreach (var i in typeClass.GetMembers())
-                    {
-                        switch (i)
-                        {
-                            case IFieldSymbol fs:
-                                tdb.WithNamedEntry(fs.Name, ParseConstantValue(fs.ConstantValue)); 
-                                continue;
-    
-                            case IMethodSymbol mt:
-                                var f = RealizerFunctionBuilder
-                                    .Create(mt.Name)
-                                    .SetStatic(mt.IsStatic)
-                                    .Build();
-                                
-                                AddSymbol(mt, f);
-                                functions.Add(f);
-                                continue;
-    
-                            default: throw new UnreachableException();
-                        }
-                    }
-
-                    var td = tdb.Build();
-                    td.AddMembers(functions);
-                    
-                    parent.AddMember(td);
-                    AddSymbol(typeClass, td);
-                    
-                } break;
+                var newNmsp = RealizerNamespaceBuilder
+                    .Create(@nmsp.Name)
+                    .Build();
                 
-                default: throw new UnreachableException();
-            }
-        } break;
-    
-        case IPropertySymbol @property:
-        {
-            var prop = RealizerPropertyBuilder.Create(property.Name)
-                .SetStatic(property.IsStatic)
-                .Build();
-            
-            parent.AddMember(prop);
-            AddSymbol(property, prop);
-        } break;
+                parent.AddMember(newNmsp);
+                AddSymbol(nmsp, newNmsp);
         
-        default: throw new UnreachableException();
-    }
+                var stackpoint = namespaceBuilder.Length;
+                namespaceBuilder.Append($".{nmsp.Name}");
+                foreach (var i in nmsp.GetMembers()) CompressMember(i, newNmsp, namespaceBuilder);
+                namespaceBuilder.Length = stackpoint;
+            } break;
+        
+            case IFieldSymbol @field:
+            {
+                var fd = RealizerFieldBuilder
+                    .Create(field.Name)
+                    .SetStatic(field.IsStatic)
+                    .Build();
+                
+                parent.AddMember(fd);
+                AddSymbol(field, fd);
+            } break;
+            
+            case IMethodSymbol @method:
+            {
+                if (!method.DeclaringSyntaxReferences.Any()) return;
+        
+                var mt = RealizerFunctionBuilder.Create(method.Name)
+                    .SetStatic(method.IsStatic || method.MethodKind == MethodKind.Constructor)
+                    .Build();
+                
+                parent.AddMember(mt);
+                AddSymbol(method, mt);
+            } break;
+            
+            case ITypeSymbol @typeClass:
+            {
+                switch (typeClass.TypeKind)
+                {
+                    case TypeKind.Class:
+                    case TypeKind.Struct:
+                    {
+                        switch (globalIdentifier)
+                        {
+                            case "System.ExportAttribute": AddIntrinsinc(IntrinsincElements.AttributeExport, typeClass); goto ret_lbl;
+                            case "System.ImportAttribute": AddIntrinsinc(IntrinsincElements.AttributeImport, typeClass); goto ret_lbl;
+                            
+                            case "System.Object": AddIntrinsinc(IntrinsincElements.TypeObject, typeClass); break;
+                            case "System.ValueType": AddIntrinsinc(IntrinsincElements.TypeValueType, typeClass); break;
+                            case "System.Enum": goto ret_lbl;
+                            
+                            case "System.Byte": AddIntrinsinc(IntrinsincElements.TypeByte, typeClass); goto ret_lbl;
+                            case "System.SByte": AddIntrinsinc(IntrinsincElements.TypeSByte, typeClass); goto ret_lbl;
+                            case "System.Int16": AddIntrinsinc(IntrinsincElements.TypeInt16, typeClass); goto ret_lbl;
+                            case "System.UInt16": AddIntrinsinc(IntrinsincElements.TypeUInt16, typeClass); goto ret_lbl;
+                            case "System.Int32": AddIntrinsinc(IntrinsincElements.TypeInt32, typeClass); goto ret_lbl;
+                            case "System.UInt32": AddIntrinsinc(IntrinsincElements.TypeUInt32, typeClass); goto ret_lbl;
+                            case "System.Int64": AddIntrinsinc(IntrinsincElements.TypeInt64, typeClass); goto ret_lbl;
+                            case "System.UInt64": AddIntrinsinc(IntrinsincElements.TypeUInt64, typeClass); goto ret_lbl;
+                            case "System.Int128": AddIntrinsinc(IntrinsincElements.TypeInt128, typeClass); goto ret_lbl;
+                            case "System.UInt128": AddIntrinsinc(IntrinsincElements.TypeUInt128, typeClass); goto ret_lbl;
+                            case "System.IntPtr": AddIntrinsinc(IntrinsincElements.TypeIntPtr, typeClass); goto ret_lbl;
+                            case "System.UIntPtr": AddIntrinsinc(IntrinsincElements.TypeUIntPtr, typeClass); goto ret_lbl;
+                                
+                            case "System.Char": AddIntrinsinc(IntrinsincElements.TypeChar, typeClass); goto ret_lbl;
+                            case "System.String": AddIntrinsinc(IntrinsincElements.TypeString, typeClass); goto ret_lbl;
+                            case "System.Boolean": AddIntrinsinc(IntrinsincElements.TypeBoolean, typeClass); goto ret_lbl;
+                                
+                            case "System.Single": AddIntrinsinc(IntrinsincElements.TypeFloat, typeClass); goto ret_lbl;
+                            case "System.Double": AddIntrinsinc(IntrinsincElements.TypeDouble, typeClass); goto ret_lbl;
+                                
+                            case "System.Void":
+                                
+                            ret_lbl: return;
+                        }
+                        
+                        RealizerContainer ty = !typeClass.IsStatic
+                            ? RealizerStructureBuilder.Create(typeClass.Name).Build()
+                            : RealizerNamespaceBuilder.Create(typeClass.Name).Build();
+                        
+                        parent.AddMember(ty);
+                        AddSymbol(typeClass, ty);
+                        
+                        var stackpoint = namespaceBuilder.Length;
+                        namespaceBuilder.Append($".{typeClass.Name}");
+                        foreach (var i in typeClass.GetMembers()) CompressMember(i, ty, namespaceBuilder);
+                        namespaceBuilder.Length = stackpoint;
+                    } break;
+        
+                    case TypeKind.Enum:
+                    {
+                        var tdb = RealizerTypedefBuilder.Create(typeClass.Name);
+                        List<RealizerFunction> functions = [];
+                        
+                        foreach (var i in typeClass.GetMembers())
+                        {
+                            switch (i)
+                            {
+                                case IFieldSymbol fs:
+                                    tdb.WithNamedEntry(fs.Name, ParseConstantValue(fs.ConstantValue)); 
+                                    continue;
+        
+                                case IMethodSymbol mt:
+                                    var f = RealizerFunctionBuilder
+                                        .Create(mt.Name)
+                                        .SetStatic(mt.IsStatic)
+                                        .Build();
+                                    
+                                    AddSymbol(mt, f);
+                                    functions.Add(f);
+                                    continue;
+        
+                                default: throw new UnreachableException();
+                            }
+                        }
+
+                        var td = tdb.Build();
+                        td.AddMembers(functions);
+                        
+                        parent.AddMember(td);
+                        AddSymbol(typeClass, td);
+                        
+                    } break;
+                    
+                    default: throw new UnreachableException();
+                }
+            } break;
+        
+            case IPropertySymbol @property:
+            {
+                var prop = RealizerPropertyBuilder.Create(property.Name)
+                    .SetStatic(property.IsStatic)
+                    .Build();
+                
+                parent.AddMember(prop);
+                AddSymbol(property, prop);
+            } break;
+            
+            default: throw new UnreachableException();
+        }
     }
     private void ProcessReferencesRecursive(RealizerMember parentBuilder)
     {
         switch (parentBuilder)
         {
             
-            case RealizerNamespace: break;
+            case RealizerModule:
+            case RealizerNamespace: goto skipall;
 
             case RealizerStructure s:
             {
@@ -362,7 +439,8 @@ public class CSharpCompressorUnit
             
             default: throw new UnreachableException();
         }
-
+        
+        skipall:
         if (parentBuilder is not RealizerContainer @c) return;
         foreach (var i in c.GetMembers().ToArray()) ProcessReferencesRecursive(i);
     }
@@ -392,12 +470,17 @@ public class CSharpCompressorUnit
                     
                     cell.Writer.Assignment(
                         new Register((ushort)csVarInt),
-                        ParseExpression(csVarVal, ref cell, localsMap, ParseMode.Load));
+                        ParseExpression(csVarVal, ref cell, localsMap));
                 }
             } return;
             
+            case ReturnStatementSyntax ret:
+                cell.Writer.Ret(ret.Expression == null ? null 
+                    : ParseExpression(ret.Expression, ref cell, localsMap));
+                return;
+            
             case ExpressionStatementSyntax exp:
-                ParseExpression(exp.Expression, ref cell, localsMap, ParseMode.Load);
+                ParseExpression(exp.Expression, ref cell, localsMap);
                 return;
             
             default: throw new UnreachableException();
@@ -408,7 +491,6 @@ public class CSharpCompressorUnit
         ExpressionSyntax node,
         ref OmegaCodeCell cell,
         Dictionary<ISymbol, int> localsMap,
-        ParseMode parseMode,
         
         bool explicitThisHandled = false)
     {
@@ -417,6 +499,11 @@ public class CSharpCompressorUnit
             case AssignmentExpressionSyntax:
                 // Technically this is a fake expression
                 ParseExpression_Assingment(node, ref cell, localsMap);
+                return null!;
+            
+            case ThrowExpressionSyntax @throw:
+                // Fake expression again
+                cell.Writer.Throw(null!);
                 return null!;
             
             case InvocationExpressionSyntax @invocation:
@@ -429,9 +516,9 @@ public class CSharpCompressorUnit
 
                 List<IOmegaValue> argsList = [];
                 foreach (var i in args)
-                    argsList.Add(ParseExpression(i.Expression, ref cell, localsMap, ParseMode.Load));
+                    argsList.Add(ParseExpression(i.Expression, ref cell, localsMap));
                 
-                return new Call(new Member(func), [.. argsList]);
+                return new Call(func.ReturnType, new Member(func), [.. argsList]);
             }
         
             case LiteralExpressionSyntax @lit:
@@ -450,8 +537,8 @@ public class CSharpCompressorUnit
                 var right = memberAccess.Name;
                 
                 return new Access(
-                    ParseExpression(left, ref cell, localsMap, ParseMode.Load),
-                    ParseExpression(right, ref cell, localsMap, parseMode, explicitThisHandled: left is ThisExpressionSyntax)
+                    ParseExpression(left, ref cell, localsMap),
+                    ParseExpression(right, ref cell, localsMap, explicitThisHandled: left is ThisExpressionSyntax)
                 );
             }
             
@@ -471,7 +558,8 @@ public class CSharpCompressorUnit
 
                 accessRight = memberSymbol switch
                 {
-                    IFieldSymbol @field => new Member((RealizerField)SymbolsMap(field)),
+                    IFieldSymbol @field => new Member(SymbolsMap(field)),
+                    IPropertySymbol @prop => new Member(SymbolsMap(prop)),
                     IParameterSymbol @arg => new Argument(SymbolsMap(arg)),
 
                     _ => throw new UnreachableException()
@@ -485,14 +573,22 @@ public class CSharpCompressorUnit
 
             case BinaryExpressionSyntax @bin:
             {
+                var expl = ParseExpression(bin.Left, ref cell, localsMap);
+                var expr = ParseExpression(bin.Right, ref cell, localsMap);
+                
+                var r = (IMethodSymbol)RefOf(bin);
+                var t = GetTypeReference(r.ReturnType);
+                
+                if (r.MethodKind != MethodKind.BuiltinOperator)
+                    return new Call(t, new Member(SymbolsMap(r)), [expl, expr]);
+                 
                 return bin.Kind() switch
                 {
-                    SyntaxKind.AddExpression => new Add(ParseExpression(bin.Left, ref cell, localsMap, parseMode),
-                        ParseExpression(bin.Left, ref cell, localsMap, parseMode)),
+                    SyntaxKind.AddExpression => new Add(t, expl, expr),
                     
                     _ => throw new UnreachableException()
                 };
-            } 
+            }
             
             default: throw new UnreachableException();
         }
@@ -508,29 +604,31 @@ public class CSharpCompressorUnit
                 var target = assig.Left;
                 var val = assig.Right;
 
+                var expl = (IOmegaAssignable)ParseExpression(target, ref cell, localsMap);
+                var expr = ParseExpression(val, ref cell, localsMap);
+
+                if (assig.Kind() == SyntaxKind.SimpleAssignmentExpression)
+                {
+                    cell.Writer.Assignment(expl, expr);
+                    return;
+                }
+
+                var r = (IMethodSymbol)RefOf(assig);
+                var t = GetTypeReference(r.ReturnType);
+                
+                if (r.MethodKind != MethodKind.BuiltinOperator)
+                {
+                    cell.Writer.Assignment(expl, new Call(t, new Member(SymbolsMap(r)), [expl, expr]));
+                    return;
+                }
+                
                 switch (assig.Kind())
                 {
-                    case SyntaxKind.SimpleAssignmentExpression:
-                        cell.Writer.Assignment(
-                            (IOmegaAssignable)ParseExpression(target, ref cell, localsMap, ParseMode.Store),
-                            ParseExpression(val, ref cell, localsMap, ParseMode.Load));
-                        break;
-
                     case SyntaxKind.AddAssignmentExpression:
-                        cell.Writer.Assignment(
-                            (IOmegaAssignable)ParseExpression(assig.Left, ref cell, localsMap, ParseMode.Store),
-                            new Add(
-                                ParseExpression(assig.Left, ref cell, localsMap, ParseMode.Load),
-                                ParseExpression(assig.Left, ref cell, localsMap, ParseMode.Load)));
-                        break;
+                        cell.Writer.Assignment(expl, new Add(t, expl, expr)); break;
                     
                     case SyntaxKind.MultiplyAssignmentExpression:
-                        cell.Writer.Assignment(
-                            (IOmegaAssignable)ParseExpression(assig.Left, ref cell, localsMap, ParseMode.Store),
-                            new Mul(
-                                ParseExpression(assig.Left, ref cell, localsMap, ParseMode.Load),
-                                ParseExpression(assig.Left, ref cell, localsMap, ParseMode.Load)));
-                        break;
+                        cell.Writer.Assignment(expl, new Mul(t, expl, expr)); break;
 
                     default: throw new UnreachableException();
                 };
@@ -559,6 +657,10 @@ public class CSharpCompressorUnit
             Int128 @v => new IntegerConstantValue(128, v),
             UInt128 @v => new IntegerConstantValue(128, v),
 
+            string @s => new SliceConstantValue(
+                new IntegerTypeReference(false, 8), Encoding.UTF8.GetBytes(s)
+                    .Select(e => new IntegerConstantValue(8, e)).ToArray<RealizerConstantValue>()),
+            
             LiteralExpressionSyntax @lit => ParseConstantValue(lit.Token.Value),
             
             _ => throw new UnreachableException()
@@ -605,14 +707,16 @@ public class CSharpCompressorUnit
         
         if (typeSymbol is INamedTypeSymbol @nts) langmember = SymbolsMap(nts.OriginalDefinition);
         else langmember = SymbolsMap(typeSymbol);
-        
-        switch (langmember)
-        {
-            case RealizerStructure @struc: return new NodeTypeReference(struc);
-            case RealizerTypedef @typedef: return new NodeTypeReference(typedef);
-        }
 
-        throw new UnreachableException();
+        var b = langmember switch
+        {
+            RealizerStructure @struc => new NodeTypeReference(struc),
+            RealizerTypedef @typedef => new NodeTypeReference(typedef),
+            
+            _ => throw new UnreachableException()
+        };
+        
+        return typeSymbol.IsValueType ? b : new ReferenceTypeReference(b);
     }
 
 
@@ -626,19 +730,33 @@ public class CSharpCompressorUnit
     private RealizerParameter SymbolsMap(IParameterSymbol symbol) =>  _symbolsMap_3[symbol];
 
 
+    private void AddIntrinsinc(IntrinsincElements kind, ISymbol symbol)
+    {
+        _intrinsincsMap_1.Add(kind, symbol);
+        _intrinsincsMap_2.Add(symbol, kind);
+    }
+    private ISymbol IntrinsincsMap(IntrinsincElements kind) => _intrinsincsMap_1[kind];
+    private IntrinsincElements IntrinsincsMap(ISymbol symbol) => _intrinsincsMap_2[symbol];
+    
     private enum IntrinsincElements
     {
+        TypeObject,
+        TypeValueType,
+        
         TypeByte, TypeSByte,
-        TypeUInt8, TypeInt8,
         TypeUInt16, TypeInt16,
         TypeUInt32, TypeInt32,
         TypeUInt64, TypeInt64,
+        TypeUInt128, TypeInt128,
+        TypeUIntPtr, TypeIntPtr,
         
         TypeFloat, TypeDouble,
         
         TypeBoolean,
         TypeString,
+        TypeChar,
         
         AttributeExport,
+        AttributeImport,
     }
 }

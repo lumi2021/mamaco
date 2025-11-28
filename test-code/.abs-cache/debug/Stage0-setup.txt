@@ -2,77 +2,113 @@
 ; 2 modules
 
 module @TestCode {
-	struct @Program : @Object {
-		func @.ctor() void {}
+	struct @Program : @System.Object {
+		func @.ctor(*@TestCode.Program .instance) void {	
+			entry:
+			
+		}
 	
 		field u64 @TestField = (i32 100)
 	
-		func @Main() void {	
+		field i16 @TestFieldShort = (i32 5)
+	
+		export "_start" func @Main() void {	
 			entry:
-				@TestField = (i32 5) + (i32 5)
-				@TestField = @TestField * @TestField
+				@TestCode.Program.TestField = i32 add (i32 5), (i32 10)
+				@TestCode.Program.TestField = u64 mul @TestCode.Program.TestField, (i32 10)
+				@TestCode.Program.TestFieldShort = (i32 5)
+				@TestCode.Program.TestFieldShort = i32 add @TestCode.Program.TestFieldShort, (i32 5)
 				ret
 			
 		}
 	}
 
-	struct @Test : @Object {
-		func @.ctor() void {}
+	struct @Test : @System.Object {
+		func @.ctor(*@TestCode.Test .instance) void {	
+			entry:
+			
+		}
 	}
 
-	struct @Driving : @Object {
-		func @.ctor() void {}
+	struct @Driving : @System.Object {
+		func @.ctor(*@TestCode.Driving .instance) void {	
+			entry:
+			
+		}
 	
 		field u1 @_rightAfterABeer
 	
-		func @InYourCar() void {	
+		func @InYourCar(u1 rightAfterABeer) void {	
 			entry:
-				self->@_rightAfterABeer = %rightAfterABeer
+				self->@TestCode.Driving._rightAfterABeer = %rightAfterABeer
 				ret
 			
 		}
 	
-		func @InMyCar() void {	
+		func @InMyCar(u1 rightAfterABeer) void {	
 			entry:
-				self->@_rightAfterABeer = %rightAfterABeer
+				self->@TestCode.Driving._rightAfterABeer = %rightAfterABeer
 				ret
 			
 		}
 	}
 }
 module @System {
+	struct @Exception : @System.Object {
+		field []u8 @_message
+	
+		field *@System.Exception @_innerException
+	
+		func @.ctor(*@System.Exception .instance, []u8 message) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, %message, null)
+			
+		}
+	
+		func @.ctor(*@System.Exception .instance, []u8 message, *@System.Exception innerException) void {	
+			entry:
+			
+		}
+	
+		func @ToString() []u8 {	
+			entry:
+				ret "TODO"
+			
+		}
+	}
+
 	namespace @Console {
-		func @Write() void {	
+		func @Write([]u8 content) void {	
 			entry:
 				ret
 			
 		}
 	
-		func @Write() void {	
+		func @Write(i64 content) void {	
 			entry:
 				ret
 			
 		}
 	
-		func @Write() void {	
+		func @Write(u64 content) void {	
 			entry:
 				ret
 			
 		}
 	
-		func @WriteLine() void {	
+		func @WriteLine([]u8 content) void {	
 			entry:
 				ret
 			
 		}
 	
-		func @WriteLine() void {	
+		func @WriteLine(i64 content) void {	
 			entry:
 				ret
 			
 		}
 	
-		func @WriteLine() void {	
+		func @WriteLine(u64 content) void {	
 			entry:
 				ret
 			
@@ -81,72 +117,15 @@ module @System {
 
 	namespace @Runtime {
 		namespace @CompilerServices {
-			struct @IsExternalInit : @Object {}
+			struct @IsExternalInit : @System.Object {}
 		}
 	}
 
-	struct @FlagsAttribute : @Attribute {
-		func @.ctor() void {}
-	}
-
-	struct @ImportAttribute : @Attribute {
-		property []u8 @Domain { get = @get_Domain set = @set_Domain}
-	
-		func @get_Domain() []u8 {	
+	struct @FlagsAttribute : @System.Attribute {
+		func @.ctor(*@System.FlagsAttribute .instance) void {	
 			entry:
-				ret self->@<Domain>k__BackingField
 			
 		}
-	
-		func @set_Domain() void {	
-			entry:
-				self->@<Domain>k__BackingField = %value
-			
-		}
-	
-		property []u8 @Symbol { get = @get_Symbol set = @set_Symbol}
-	
-		func @get_Symbol() []u8 {	
-			entry:
-				ret self->@<Symbol>k__BackingField
-			
-		}
-	
-		func @set_Symbol() void {	
-			entry:
-				self->@<Symbol>k__BackingField = %value
-			
-		}
-	
-		func @.ctor() void {}
-	
-		func @.ctor() void {}
-	
-		field []u8 @<Domain>k__BackingField
-	
-		field []u8 @<Symbol>k__BackingField
-	}
-
-	struct @ExportAttribute : @Attribute {
-		property []u8 @Symbol { get = @get_Symbol set = @set_Symbol}
-	
-		func @get_Symbol() []u8 {	
-			entry:
-				ret self->@<Symbol>k__BackingField
-			
-		}
-	
-		func @set_Symbol() void {	
-			entry:
-				self->@<Symbol>k__BackingField = %value
-			
-		}
-	
-		func @.ctor() void {}
-	
-		func @.ctor() void {}
-	
-		field []u8 @<Symbol>k__BackingField
 	}
 
 	typedef @AttributeTargets {
@@ -168,67 +147,127 @@ module @System {
 		All => (i32 32767)
 	}
 
-	struct @AttributeUsageAttribute : @Attribute {
-		func @.ctor() void {}
-	
-		property @AttributeTargets @ValidOn { get = @get_ValidOn set = @set_ValidOn}
-	
-		func @get_ValidOn() @AttributeTargets {	
+	struct @AttributeUsageAttribute : @System.Attribute {
+		func @.ctor(*@System.AttributeUsageAttribute .instance, @System.AttributeTargets validOn) void {	
 			entry:
-				ret self->@<ValidOn>k__BackingField
 			
 		}
 	
-		func @set_ValidOn() void {	
+		property @System.AttributeTargets @ValidOn { get = @System.AttributeUsageAttribute.get_ValidOn set = @System.AttributeUsageAttribute.set_ValidOn }
+	
+		func @get_ValidOn() @System.AttributeTargets {	
 			entry:
-				self->@<ValidOn>k__BackingField = %value
+				ret self->@System.AttributeUsageAttribute.<ValidOn>k__BackingField
 			
 		}
 	
-		property u1 @AllowMultiple { get = @get_AllowMultiple set = @set_AllowMultiple}
+		func @set_ValidOn(@System.AttributeTargets value) void {	
+			entry:
+				self->@System.AttributeUsageAttribute.<ValidOn>k__BackingField = %value
+				ret
+			
+		}
+	
+		property u1 @AllowMultiple { get = @System.AttributeUsageAttribute.get_AllowMultiple set = @System.AttributeUsageAttribute.set_AllowMultiple }
 	
 		func @get_AllowMultiple() u1 {	
 			entry:
-				ret self->@<AllowMultiple>k__BackingField
+				ret self->@System.AttributeUsageAttribute.<AllowMultiple>k__BackingField
 			
 		}
 	
-		func @set_AllowMultiple() void {	
+		func @set_AllowMultiple(u1 value) void {	
 			entry:
-				self->@<AllowMultiple>k__BackingField = %value
+				self->@System.AttributeUsageAttribute.<AllowMultiple>k__BackingField = %value
+				ret
 			
 		}
 	
-		property u1 @Inherited { get = @get_Inherited set = @set_Inherited}
+		property u1 @Inherited { get = @System.AttributeUsageAttribute.get_Inherited set = @System.AttributeUsageAttribute.set_Inherited }
 	
 		func @get_Inherited() u1 {	
 			entry:
-				ret self->@<Inherited>k__BackingField
+				ret self->@System.AttributeUsageAttribute.<Inherited>k__BackingField
 			
 		}
 	
-		func @set_Inherited() void {	
+		func @set_Inherited(u1 value) void {	
 			entry:
-				self->@<Inherited>k__BackingField = %value
+				self->@System.AttributeUsageAttribute.<Inherited>k__BackingField = %value
+				ret
 			
 		}
 	
-		field @AttributeTargets @<ValidOn>k__BackingField
+		field @System.AttributeTargets @<ValidOn>k__BackingField
 	
 		field u1 @<AllowMultiple>k__BackingField
 	
 		field u1 @<Inherited>k__BackingField
 	}
 
-	struct @Reflection : @Object {}
+	namespace @Diagnostics {
+		struct @UnreachableException : @System.Exception {
+			func @.ctor(*@System.Diagnostics.UnreachableException .instance) void {	
+				entry:
+					call void @System.Exception..ctor(%.instance, null, null)
+				
+			}
+		
+			func @.ctor(*@System.Diagnostics.UnreachableException .instance, []u8 message) void {	
+				entry:
+					call void @System.Exception..ctor(%.instance, %message, null)
+				
+			}
+		
+			func @.ctor(*@System.Diagnostics.UnreachableException .instance, []u8 message, *@System.Exception innerException) void {	
+				entry:
+					call void @System.Exception..ctor(%.instance, %message, %innerException)
+				
+			}
+		}
+	}
 
-	struct @ValueType : @Object {}
+	struct @Reflection : @System.Object {}
 
-	struct @Type : @Object {}
+	struct @ValueType : @System.Object {}
 
-	struct @Attribute : @Object {}
+	struct @Type : @System.Object {
+		property []u8 @Name { get = @System.Type.get_Name }
+	
+		func @get_Name() []u8 {	
+			entry:
+				ret self->@System.Type.<Name>k__BackingField
+			
+		}
+	
+		property []u8 @FullName { get = @System.Type.get_FullName }
+	
+		func @get_FullName() []u8 {	
+			entry:
+				ret self->@System.Type.<FullName>k__BackingField
+			
+		}
+	
+		field []u8 @<Name>k__BackingField
+	
+		field []u8 @<FullName>k__BackingField
+	}
 
-	struct @Decimal : @ValueType {}
+	struct @Attribute : @System.Object {}
 
-	struct @Object {}
+	struct @Decimal : @System.ValueType {}
+
+	struct @Object {
+		func @GetType() *@System.Type {	
+			entry:
+				throw 
+			
+		}
+	
+		func @ToString() []u8 {	
+			entry:
+				ret call *@System.Type @System.Object.GetType()->self->@System.Type.FullName
+			
+		}
+	}
 }

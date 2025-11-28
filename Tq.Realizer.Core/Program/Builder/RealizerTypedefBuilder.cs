@@ -25,7 +25,7 @@ public struct RealizerTypedefBuilder()
         _entries.Add(new RealizerTypedefNamedEntry(name, value));
         return this;
     }
-    public RealizerTypedef Build() => new RealizerTypedef(_baseSymbol, [.._entries]);
+    public RealizerTypedef Build() => new(_baseSymbol, [.._entries]);
     
     
 }

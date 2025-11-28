@@ -10,7 +10,7 @@ public struct RealizerStructureBuilder
         return new RealizerStructureBuilder() { _baseSymbol = baseSymbol };
     }
     
-    public RealizerStructure Build() => new RealizerStructure(_baseSymbol);
+    public RealizerStructure Build() => new(_baseSymbol);
     
     
 }

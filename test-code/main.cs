@@ -5,14 +5,18 @@ namespace TestCode;
 public class Program() {
 
     public static ulong TestField = 100;
+    public static short TestFieldShort = 5;
 
-    [Export]
     public static void Main()
     {
         Console.WriteLine(TestField);
         TestField = 5 + 10;
         TestField *= 10;
         Console.WriteLine(TestField);
+
+        TestFieldShort = 5;
+        TestFieldShort += 5;
+        //TestFieldShort = (short)(TestFieldShort + TestFieldShort);
     }
 }
 

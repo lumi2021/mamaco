@@ -6,13 +6,13 @@ namespace Tq.Realizeer.Core.Program;
 public class RealizerProgram(string name)
 {
     public readonly string Name = name;
-    private List<RealizerNamespace> _modules = [];
+    private List<RealizerModule> _modules = [];
     
     
-    public IEnumerable<RealizerNamespace> Modules => _modules.AsEnumerable();
+    public IEnumerable<RealizerModule> Modules => _modules.AsEnumerable();
     
     
-    public void AddModule(RealizerNamespace module) => _modules.Add(module);
+    public void AddModule(RealizerModule module) => _modules.Add(module);
 
     public override string ToString()
     {

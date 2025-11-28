@@ -18,7 +18,7 @@ public static class Builder
 
         ClearLocal();
         
-        List<string> sources = [];
+        List<(string src, string path)> sources = [];
         
         ListSources(baseDir, sources);
         ListSources(Path.Combine(exeDir, "Libs"), sources);
@@ -28,7 +28,7 @@ public static class Builder
         var compiler = new CSharpCompilerUnit();
         var compressor = new CSharpCompressorUnit();
 
-        foreach (var i in sources) compiler.Parse(i);
+        foreach (var (i1, i2) in sources) compiler.Parse(i1, i2);
         compiler.Compile();
 
         var diagnostics = compiler.GetDiagnostics();
@@ -39,7 +39,7 @@ public static class Builder
             var lineSpan = location.GetLineSpan().StartLinePosition;
             var file = (location.SourceTree?.FilePath) ?? "<no file>";
             var severity = diag.Severity;
-     
+            
             Console.WriteLine($"{severity} ({diag.Id}) {file} ({lineSpan}): {diag.GetMessage()}");
         }
  
@@ -76,13 +76,13 @@ public static class Builder
         Console.WriteLine("Build Finished Successfully!");
     }
 
-    private static void ListSources(string path, List<string> srcList)
+    private static void ListSources(string path, List<(string, string)> srcList)
     {
         var fullPath = Path.GetFullPath(path);
         if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"Directory {fullPath} does not exist");
         
         var libsSrc = Directory.EnumerateFiles(fullPath, "*.cs", SearchOption.AllDirectories);
-        srcList.AddRange(libsSrc.Select(File.ReadAllText));
+        srcList.AddRange(libsSrc.Select( e => (File.ReadAllText(e), e)));
     }
 
     private static void LoadModules()
