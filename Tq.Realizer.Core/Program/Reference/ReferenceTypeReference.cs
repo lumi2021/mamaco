@@ -1,9 +1,14 @@
+using Tq.Realizer.Data;
+
 namespace Tq.Realizer.Core.Builder.References;
 
-public class ReferenceTypeReference(TypeReference? subtype, uint? alignment = null): TypeReference
+public class ReferenceTypeReference(TypeReference? subtype, Alignment? alignment = null): TypeReference
 {
-    public readonly TypeReference? Subtype = subtype;
-    public override string ToString() => $"*{Subtype?.ToString() ?? "any"}";
+    public sealed override Alignment Alignment => alignment ?? Alignment.PointerSized;
+    public override Alignment Length => Alignment.PointerSized;
     
-    public sealed override uint? Alignment { get; init; } = alignment;
+    
+    public readonly TypeReference? Subtype = subtype;
+    public override string ToString() => $"*{Subtype?.ToString() ?? "opaque"}";
+    
 }

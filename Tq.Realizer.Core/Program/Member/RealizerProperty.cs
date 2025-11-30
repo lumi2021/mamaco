@@ -18,7 +18,7 @@ public class RealizerProperty: RealizerMember
 
 
     protected override bool GetStatic() => _static;
-    protected override bool SetStatic(bool value) => _static = value;
+    protected override void SetStatic(bool value) => _static = value;
 
 
     protected override string ToFullDump()

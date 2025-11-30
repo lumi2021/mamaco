@@ -30,7 +30,7 @@ public abstract class RealizerMember : IFormattable
 
 
     protected virtual bool GetStatic() => true;
-    protected virtual bool SetStatic(bool value)
+    protected virtual void SetStatic(bool value)
         => throw new InvalidOperationException($"{GetType().Name} does not allows writing to {nameof(Static)}");
 
 

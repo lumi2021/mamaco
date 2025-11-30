@@ -8,8 +8,10 @@ module @TestCode {
 			
 		}
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 64
 		field u64 @TestField = (i32 100)
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 16
 		field i16 @TestFieldShort = (i32 5)
 	
 		export "_start" func @Main() void {	
@@ -36,6 +38,7 @@ module @TestCode {
 			
 		}
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 1
 		field u1 @_rightAfterABeer
 	
 		func @InYourCar(u1 rightAfterABeer) void {	
@@ -55,8 +58,10 @@ module @TestCode {
 }
 module @System {
 	struct @Exception : @System.Object {
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 2
 		field []u8 @_message
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 1
 		field *@System.Exception @_innerException
 	
 		func @.ctor(*@System.Exception .instance, []u8 message) void {	
@@ -198,10 +203,13 @@ module @System {
 			
 		}
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 0
 		field @System.AttributeTargets @<ValidOn>k__BackingField
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 1
 		field u1 @<AllowMultiple>k__BackingField
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 1
 		field u1 @<Inherited>k__BackingField
 	}
 
@@ -248,8 +256,10 @@ module @System {
 			
 		}
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 2
 		field []u8 @<Name>k__BackingField
 	
+		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 2
 		field []u8 @<FullName>k__BackingField
 	}
 

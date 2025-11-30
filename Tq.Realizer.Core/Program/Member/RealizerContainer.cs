@@ -11,14 +11,14 @@ public abstract class RealizerContainer: RealizerMember
     public IEnumerable<RealizerMember> GetMembers() => _membersList.AsEnumerable();
     public IEnumerable<T> GetMembers<T>() where T: RealizerMember => _membersList.OfType<T>().AsEnumerable();
 
-    public void AddMember(RealizerMember member)
+    public void AddMember(RealizerMember member, int index = -1)
     {
         if (!CanAccept(member))
             throw new ArgumentException($"Cannot add member {member.Name} of " +
                                         $"type {member.GetType().Name} inside {this.GetType().Name}");
             
         member._parent = this;
-        _membersList.Add(member);
+        _membersList.Insert(index >= 0 ? index : _membersList.Count, member);
     }
 
     public void AddMembers(IEnumerable<RealizerMember> members)

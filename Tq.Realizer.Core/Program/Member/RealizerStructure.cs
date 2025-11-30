@@ -1,6 +1,7 @@
 using System.Text;
 using Tq.Realizeer.Core.Program.Member;
 using Tq.Realizer;
+using Tq.Realizer.Data;
 
 namespace Tq.Realizeer.Core.Program.Builder;
 
@@ -8,17 +9,8 @@ public class RealizerStructure: RealizerContainer
 {
     public RealizerStructure? Extends { get; set; } = null;
     
-    public ushort Alignment
-    {
-        get;
-        init
-        {
-            if (value is < 1 or > 256)
-                throw new ArgumentOutOfRangeException(nameof(Alignment), "Alignment must be between 1 and 256");
-            field = value;
-        }
-    }
-    public uint Length { get; init; }
+    public Alignment Alignment { get; init; }
+    public Alignment Length { get; init; }
     
     
     internal RealizerStructure(string name) : base(name) { }

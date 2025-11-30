@@ -25,7 +25,7 @@ public class RealizerFunction: RealizerMember
 
 
     protected override bool GetStatic() => _static;
-    protected override bool SetStatic(bool value) => _static = value;
+    protected override void SetStatic(bool value) => _static = value;
 
     public RealizerParameter AddParameter(string name, TypeReference type, int index = -1)
     {
