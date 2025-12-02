@@ -88,6 +88,7 @@ public static class Builder
     private static void LoadModules()
     {
         RealizerModules.ManualLoad(Path.Combine(AppContext.BaseDirectory, "Tq.Module.LLVM.dll"));
+        RealizerModules.ManualLoad(Path.Combine(AppContext.BaseDirectory, "Tq.Module.CLR.dll"));
     }
 
     private static void ClearLocal()

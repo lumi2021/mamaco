@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tq.Module.LLVM", "RealizerM
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tq.Realizer.Core", "Tq.Realizer.Core\Tq.Realizer.Core.csproj", "{19DBCD5A-4B9A-4E8B-AD9F-509A9ED45313}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tq.Module.CLR", "RealizerModules\target-CLR\Tq.Module.CLR\Tq.Module.CLR.csproj", "{CE9F7213-A11F-4ECC-B5A7-C30D3FB82D82}"
+EndProject
 
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,8 +35,13 @@ Global
 		{19DBCD5A-4B9A-4E8B-AD9F-509A9ED45313}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19DBCD5A-4B9A-4E8B-AD9F-509A9ED45313}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19DBCD5A-4B9A-4E8B-AD9F-509A9ED45313}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE9F7213-A11F-4ECC-B5A7-C30D3FB82D82}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE9F7213-A11F-4ECC-B5A7-C30D3FB82D82}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE9F7213-A11F-4ECC-B5A7-C30D3FB82D82}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE9F7213-A11F-4ECC-B5A7-C30D3FB82D82}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{9C746B4D-BF64-4F53-99C3-7B68246F6F99} = {C2919385-0C94-47ED-9324-24EA7501A336}
+		{CE9F7213-A11F-4ECC-B5A7-C30D3FB82D82} = {C2919385-0C94-47ED-9324-24EA7501A336}
 	EndGlobalSection
 EndGlobal
