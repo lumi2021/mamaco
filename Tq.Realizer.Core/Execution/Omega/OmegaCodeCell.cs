@@ -9,13 +9,13 @@ namespace Tq.Realizer.Core.Builder.Execution.Omega;
 
 public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s, n, idx)
 {
-    private List<OmegaInstructions.IOmegaInstruction> _instructions = [];
-    public OmegaInstructions.IOmegaInstruction[] Instructions => [.. _instructions];
+    private List<IOmegaInstruction> _instructions = [];
+    public IOmegaInstruction[] Instructions => [.. _instructions];
     public InstructionWriter Writer => new(this);
 
 
+    public void OverrideInstructions(IOmegaInstruction[] instructions) => _instructions = [.. instructions];
     public override bool IsFinished() => _instructions.Count > 0 && _instructions[^1] is IOmegaBranch;
-
     public override string DumpInstructionsToString()
     {
         var sb = new StringBuilder();
@@ -42,11 +42,11 @@ public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s,
         public IS Unreachable() => AppendInstruction(new Invalid());
         public IS Invalid() => AppendInstruction(new Invalid());
         
-        public IS Assignment(IOmegaAssignable left, IOmegaValue right) => AppendInstruction(new Assignment(left, right));
-        public IS Call(TypeReference? t, IOmegaCallable callable, params IOmegaValue[] args) => AppendInstruction(new Call(t, callable, args));
+        public IS Assignment(IOmegaAssignable left, IOmegaExpression right) => AppendInstruction(new Assignment(left, right));
+        public IS Call(TypeReference? t, IOmegaCallable callable, params IOmegaExpression[] args) => AppendInstruction(new Call(t, callable, args));
 
-        public IS Ret(IOmegaValue? value = null) => AppendInstruction(new Ret(value));
-        public IS Throw(IOmegaValue? value) => AppendInstruction(new Throw(value));
+        public IS Ret(IOmegaExpression? value = null) => AppendInstruction(new Ret(value));
+        public IS Throw(IOmegaExpression? value) => AppendInstruction(new Throw(value));
     }
     
 }

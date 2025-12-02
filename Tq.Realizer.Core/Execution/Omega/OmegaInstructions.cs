@@ -1,14 +1,10 @@
+using System.Diagnostics;
 using System.Text;
+using Tq.Realizeer.Core.Program.Builder;
 using Tq.Realizeer.Core.Program.Member;
 using Tq.Realizer.Core.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
-using i16 = short;
-using u1 = bool;
-using u128 = System.UInt128;
 using u16 = ushort;
-using u32 = uint;
-using u64 = ulong;
-using u8 = byte;
 
 namespace Tq.Realizer.Core.Builder.Language.Omega;
 
@@ -16,10 +12,13 @@ public static class OmegaInstructions
 {
 
     public interface IOmegaInstruction {}
-    
-    public interface IOmegaValue : IOmegaInstruction {}
-    public interface IOmegaAssignable : IOmegaValue {}
-    public interface IOmegaCallable : IOmegaValue {}
+
+    public interface IOmegaExpression : IOmegaInstruction
+    {
+        public TypeReference? Type { get; }
+    }
+    public interface IOmegaAssignable : IOmegaExpression {}
+    public interface IOmegaCallable : IOmegaExpression {}
     public interface IOmegaBranch : IOmegaInstruction {}
     
     
@@ -34,56 +33,67 @@ public static class OmegaInstructions
     }
 
     // Values
-    public readonly struct Register(u16 i) : IOmegaAssignable, IOmegaCallable
+    public readonly struct Register(TypeReference? type, u16 i) : IOmegaAssignable, IOmegaCallable
     {
+        public TypeReference? Type => type;
         public readonly u16 Index = i;
-        public override string ToString() => $"%{Index}";
+        public override string ToString() => $"{Type} %{Index}";
     }
     public readonly struct Argument(RealizerParameter p) : IOmegaAssignable, IOmegaCallable
     {
+        public TypeReference? Type => Parameter.Type;
         public readonly RealizerParameter Parameter = p;
         public override string ToString() => $"%{Parameter.Name}";
     }
     public readonly struct Member(RealizerMember m) : IOmegaAssignable, IOmegaCallable
     {
+        public TypeReference Type => Node switch
+        {
+            RealizerFunction @f => f.ReturnType!,
+            _ => throw new UnreachableException()
+        };
         public readonly RealizerMember Node = m;
         public override string ToString() => Node.ToString();
     }
-    public readonly struct Constant(RealizerConstantValue v) : IOmegaValue
+    public readonly struct Constant(RealizerConstantValue v) : IOmegaExpression
     {
+        public TypeReference? Type => null!;
         public readonly RealizerConstantValue Value = v;
         public override string ToString() => $"{Value}";
     }
-    public readonly struct Access(IOmegaValue l, IOmegaValue r) : IOmegaAssignable, IOmegaCallable
+    public readonly struct Access(IOmegaExpression l, IOmegaExpression r) : IOmegaAssignable, IOmegaCallable
     {
-        public readonly IOmegaValue Left = l;
-        public readonly IOmegaValue Reft = r;
-        public override string ToString() => $"{Left}->{Reft}";
+        public TypeReference? Type => Right.Type;
+        
+        public readonly IOmegaExpression Left = l;
+        public readonly IOmegaExpression Right = r;
+        public override string ToString() => $"{Left}->{Right}";
     }
-    public readonly struct Self() : IOmegaValue
+    public readonly struct Self() : IOmegaExpression
     {
+        public TypeReference? Type => null;
         public override string ToString() => "self";
     }
     
     // Statemets
-    public readonly struct Assignment(IOmegaAssignable l, IOmegaValue r) : IOmegaInstruction
+    public readonly struct Assignment(IOmegaAssignable l, IOmegaExpression r) : IOmegaInstruction
     {
         public readonly IOmegaAssignable Left = l;
-        public readonly IOmegaValue Right = r;
+        public readonly IOmegaExpression Right = r;
         public override string ToString() => $"{Left} = {Right}";
     }
     
     // Expressions
-    public readonly struct Alloca(TypeReference type) : IOmegaValue
+    public readonly struct Alloca(TypeReference type) : IOmegaExpression
     {
-        public readonly TypeReference Type = type;
+        public TypeReference Type => type;
         public override string ToString() => $"alloca {Type}";
     }
-    public readonly struct Call(TypeReference? type, IOmegaCallable c, params IOmegaValue[] args) : IOmegaValue
+    public readonly struct Call(TypeReference? type, IOmegaCallable c, params IOmegaExpression[] args) : IOmegaExpression
     {
-        public readonly TypeReference? Type = type;
+        public TypeReference Type => type;
         public readonly IOmegaCallable Callable = c;
-        public readonly IOmegaValue[] Arguments = args;
+        public readonly IOmegaExpression[] Arguments = args;
         public override string ToString()
         {
             var sb = new StringBuilder();
@@ -96,30 +106,30 @@ public static class OmegaInstructions
             return sb.ToString();
         }
     }
-    public readonly struct Add(TypeReference type, IOmegaValue l, IOmegaValue r) : IOmegaValue
+    public readonly struct Add(TypeReference type, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
     {
-        public readonly TypeReference Type = type;
-        public readonly IOmegaValue Left = l;
-        public readonly IOmegaValue Right = r;
+        public TypeReference? Type => type;
+        public readonly IOmegaExpression Left = l;
+        public readonly IOmegaExpression Right = r;
         public override string ToString() => $"{Type} add {Left}, {Right}";
     }
-    public readonly struct Mul(TypeReference type, IOmegaValue l, IOmegaValue r) : IOmegaValue
+    public readonly struct Mul(TypeReference type, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
     {
-        public readonly TypeReference Type = type;
-        public readonly IOmegaValue Left = l;
-        public readonly IOmegaValue Right = r;
+        public TypeReference? Type => type;
+        public readonly IOmegaExpression Left = l;
+        public readonly IOmegaExpression Right = r;
         public override string ToString() => $"{Type} mul {Left}, {Right}";
     }
     
     // Control flow
-    public readonly struct Ret(IOmegaValue? value) : IOmegaBranch
+    public readonly struct Ret(IOmegaExpression? value) : IOmegaBranch
     {
-        public readonly IOmegaValue? Value = value;
+        public readonly IOmegaExpression? Value = value;
         public override string ToString() => "ret" + (Value == null ? "" : $" {Value}");
     }
-    public readonly struct Throw(IOmegaValue fault) : IOmegaBranch
+    public readonly struct Throw(IOmegaExpression fault) : IOmegaBranch
     {
-        public readonly IOmegaValue Fault = fault;
+        public readonly IOmegaExpression Fault = fault;
         public override string ToString() => $"throw {Fault}";
     }
 }

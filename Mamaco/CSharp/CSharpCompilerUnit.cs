@@ -73,6 +73,7 @@ public class CSharpCompilerUnit
                     newEnd -= spam_offset;
                 }
 
+
                 if (newBegin < 0) newBegin = 0;
                 if (newEnd < 0) newEnd = 0;
 

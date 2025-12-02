@@ -5,21 +5,24 @@ module @TestCode {
 	struct @Program : @System.Object {
 		func @.ctor(*@TestCode.Program .instance) void {	
 			entry:
+				ret
 			
 		}
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 64
-		field u64 @TestField = (i32 100)
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 64
+		field u64 @TestField = (i64 100)
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 16
-		field i16 @TestFieldShort = (i32 5)
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 16
+		field i16 @TestFieldShort = (i16 5)
 	
 		export "_start" func @Main() void {	
 			entry:
+				call void @System.Console.WriteLine(@TestCode.Program.TestField)
 				@TestCode.Program.TestField = i32 add (i32 5), (i32 10)
-				@TestCode.Program.TestField = u64 mul @TestCode.Program.TestField, (i32 10)
-				@TestCode.Program.TestFieldShort = (i32 5)
-				@TestCode.Program.TestFieldShort = i32 add @TestCode.Program.TestFieldShort, (i32 5)
+				@TestCode.Program.TestField = u64 mul @TestCode.Program.TestField, (i64 10)
+				call void @System.Console.WriteLine(@TestCode.Program.TestField)
+				@TestCode.Program.TestFieldShort = (i16 5)
+				@TestCode.Program.TestFieldShort = i16 add @TestCode.Program.TestFieldShort, (i16 5)
 				ret
 			
 		}
@@ -28,6 +31,7 @@ module @TestCode {
 	struct @Test : @System.Object {
 		func @.ctor(*@TestCode.Test .instance) void {	
 			entry:
+				ret
 			
 		}
 	}
@@ -35,10 +39,11 @@ module @TestCode {
 	struct @Driving : @System.Object {
 		func @.ctor(*@TestCode.Driving .instance) void {	
 			entry:
+				ret
 			
 		}
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 1
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 1
 		field u1 @_rightAfterABeer
 	
 		func @InYourCar(u1 rightAfterABeer) void {	
@@ -58,20 +63,24 @@ module @TestCode {
 }
 module @System {
 	struct @Exception : @System.Object {
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 2
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
 		field []u8 @_message
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 1
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 1
 		field *@System.Exception @_innerException
 	
 		func @.ctor(*@System.Exception .instance, []u8 message) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, null)
+				call void @System.Exception..ctor(%.instance, %message, (*@System.Exception null))
+				ret
 			
 		}
 	
 		func @.ctor(*@System.Exception .instance, []u8 message, *@System.Exception innerException) void {	
 			entry:
+				self->@System.Exception._message = %message
+				self->@System.Exception._innerException = %innerException
+				ret
 			
 		}
 	
@@ -129,6 +138,7 @@ module @System {
 	struct @FlagsAttribute : @System.Attribute {
 		func @.ctor(*@System.FlagsAttribute .instance) void {	
 			entry:
+				ret
 			
 		}
 	}
@@ -155,6 +165,7 @@ module @System {
 	struct @AttributeUsageAttribute : @System.Attribute {
 		func @.ctor(*@System.AttributeUsageAttribute .instance, @System.AttributeTargets validOn) void {	
 			entry:
+				ret
 			
 		}
 	
@@ -203,13 +214,13 @@ module @System {
 			
 		}
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 0
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 0
 		field @System.AttributeTargets @<ValidOn>k__BackingField
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 1
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 1
 		field u1 @<AllowMultiple>k__BackingField
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = 1
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 1
 		field u1 @<Inherited>k__BackingField
 	}
 
@@ -217,19 +228,22 @@ module @System {
 		struct @UnreachableException : @System.Exception {
 			func @.ctor(*@System.Diagnostics.UnreachableException .instance) void {	
 				entry:
-					call void @System.Exception..ctor(%.instance, null, null)
+					call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+					ret
 				
 			}
 		
 			func @.ctor(*@System.Diagnostics.UnreachableException .instance, []u8 message) void {	
 				entry:
-					call void @System.Exception..ctor(%.instance, %message, null)
+					call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+					ret
 				
 			}
 		
 			func @.ctor(*@System.Diagnostics.UnreachableException .instance, []u8 message, *@System.Exception innerException) void {	
 				entry:
 					call void @System.Exception..ctor(%.instance, %message, %innerException)
+					ret
 				
 			}
 		}
@@ -256,10 +270,10 @@ module @System {
 			
 		}
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 2
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
 		field []u8 @<Name>k__BackingField
 	
-		; index = 0 bitalignment = 0 bitoffset = 0 bitlength = ptr * 2
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
 		field []u8 @<FullName>k__BackingField
 	}
 
@@ -276,7 +290,7 @@ module @System {
 	
 		func @ToString() []u8 {	
 			entry:
-				ret call *@System.Type @System.Object.GetType()->self->@System.Type.FullName
+				ret call *@System.Type self->@System.Object.GetType()->@System.Type.FullName
 			
 		}
 	}

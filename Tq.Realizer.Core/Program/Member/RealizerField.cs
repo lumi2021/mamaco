@@ -36,7 +36,12 @@ public class RealizerField: RealizerMember
     {
         var sb = new StringBuilder();
 
-        sb.AppendLine($"; index = {Index} bitalignment = {BitAlignment} bitoffset = {BitOffset} bitlength = {BitLength}");
+        if (_parent is RealizerStructure)
+            sb.AppendLine($"; index = {Index}" +
+                          $" bitAlignment = {BitAlignment}" +
+                          $" bitOffset = {BitOffset} " +
+                          $" bitLength = {BitLength}");
+        
         sb.Append($"field {Type?.ToString() ?? "void"} @{Name}");
         if (Initializer != null) sb.Append($" = {Initializer}");
         
