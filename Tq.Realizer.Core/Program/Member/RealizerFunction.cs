@@ -19,6 +19,8 @@ public class RealizerFunction: RealizerMember
     public int ExecutionBlocksCount => _executionBlocks.Count;
 
     public string? ExportSymbol { get; private set; } = null;
+    public string? ImportDomain { get; private set; } = null;
+    public string? ImportSymbol { get; private set; } = null;
     
     
     internal RealizerFunction(string name, RealizerParameter[]  parameters) : base(name) => Parameters = parameters;
@@ -41,6 +43,8 @@ public class RealizerFunction: RealizerMember
     }
 
     public void Export(string symbol) => ExportSymbol = symbol;
+    public void Import(string symbol) => Import(null, symbol);
+    public void Import(string? domain, string symbol) => (ImportDomain, ImportSymbol) = (domain, symbol);
     
     
     public OmegaCodeCell AddOmegaCodeCell(string name)
@@ -55,6 +59,8 @@ public class RealizerFunction: RealizerMember
         var sb = new StringBuilder();
         
         if (ExportSymbol != null) sb.Append($"export \"{ExportSymbol}\" ");
+        if (ImportSymbol != null) sb.Append($"import \"{ImportDomain}\" \"{ImportSymbol}\" ");
+        
         sb.Append($"func @{Name}(");
         sb.Append(string.Join(", ", Parameters));
         sb.Append($") {ReturnType?.ToString() ?? "void"} {{");

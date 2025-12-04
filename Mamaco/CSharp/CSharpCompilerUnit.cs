@@ -147,7 +147,26 @@ public class CSharpCompilerUnit
 
             return base.VisitMethodDeclaration(node)!;
         }
-        
+
+        public override SyntaxNode? VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
+        {
+            if (node.Modifiers.Any(m => m.IsKind(SyntaxKind.UnsafeKeyword)))
+                return base.VisitConstructorDeclaration(node)!;
+
+            var oldSpan = node.Modifiers.Span;
+            
+            var newModifiers = node.Modifiers.Add(
+                SyntaxFactory.Token(SyntaxKind.UnsafeKeyword));
+            node = node.WithModifiers(newModifiers);
+
+            var newSpan = node.Modifiers.Span;
+
+            var beggin = oldSpan.Start;
+            var offset = oldSpan.End - newSpan.End;
+            spanShift.Add((beggin, offset));
+
+            return base.VisitConstructorDeclaration(node)!;
+        }
     }
 }
 

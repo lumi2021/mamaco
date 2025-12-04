@@ -120,6 +120,42 @@ public static class OmegaInstructions
         public readonly IOmegaExpression Right = r;
         public override string ToString() => $"{Type} mul {Left}, {Right}";
     }
+
+    public readonly struct Cmp(ComparissonOperation op, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
+    {
+        public TypeReference? Type => new IntegerTypeReference(false, 1);
+        public readonly IOmegaExpression Left = l;
+        public readonly IOmegaExpression Right = r;
+        public readonly ComparissonOperation Op = op;
+
+        public override string ToString() => $"cmp {Op} {Left}, {Right}";
+    }
+    
+    public readonly struct IntTypeCast(IntegerTypeReference toType, IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => toType;
+        public readonly IOmegaExpression Exp = exp.Type is IntegerTypeReference
+            ? exp : throw new ArgumentException();
+
+        public override string ToString() => $"{Exp} as {Type}";
+    }
+    public readonly struct IntFromPtr(IntegerTypeReference toType, IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => toType;
+        public readonly IOmegaExpression Exp = exp.Type is ReferenceTypeReference
+            ? exp : throw new ArgumentException();
+
+        public override string ToString() => $"{Exp} as {Type}";
+    }
+    public readonly struct PtrFromInt(ReferenceTypeReference toType, IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => toType;
+        public readonly IOmegaExpression Exp = exp.Type is IntegerTypeReference
+            ? exp : throw new ArgumentException();
+
+        public override string ToString() => $"{Exp} as {Type}";
+    }
+
     
     // Control flow
     public readonly struct Ret(IOmegaExpression? value) : IOmegaBranch
@@ -131,5 +167,22 @@ public static class OmegaInstructions
     {
         public readonly IOmegaExpression Fault = fault;
         public override string ToString() => $"throw {Fault}";
+    }
+
+
+    public enum ComparissonOperation
+    {
+        Equal,
+        NotEqual,
+        
+        SignedLessThan,
+        SignedLessThanOrEqual,
+        SignedGreaterThan,
+        SignedGreaterThanOrEqual,
+        
+        UnsignedLessThan,
+        UnsignedLessThanOrEqual,
+        UnsignedGreaterThan,
+        UnsignedGreaterThanOrEqual,
     }
 }

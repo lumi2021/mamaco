@@ -6,7 +6,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Tq.Realizeer.Core.Program.Builder;
 using Tq.Realizeer.Core.Program.Member;
 using Tq.Realizer.Core.Builder.Execution.Omega;
-using Tq.Realizer.Core.Builder.Language.Omega;
 using Tq.Realizer.Core.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
 using static Tq.Realizer.Core.Builder.Language.Omega.OmegaInstructions;
@@ -87,6 +86,12 @@ public partial class CSharpCompressorUnit
                     
                     if (!cell.IsFinished()) cell.Writer.Ret();
                 } break;
+
+                case IMethodSymbol { IsExtern: true } methodSymbol:
+                {
+                    var func = (RealizerFunction)builder;
+                    func.Import(methodSymbol.Name);
+                } break;
                 
                 case IMethodSymbol methodSymbol:
                 {
@@ -109,7 +114,7 @@ public partial class CSharpCompressorUnit
                         else
                         {
                             var x = ParseExpression((ExpressionSyntax)body, ref cell, localsMap);
-                            if (x != null) cell.Writer.Ret(x);
+                            if (x != null!) cell.Writer.Ret(x);
                         }
                     
                         if (!cell.IsFinished()) cell.Writer.Ret();
@@ -266,8 +271,15 @@ public partial class CSharpCompressorUnit
             }
         
             case ImplicitObjectCreationExpressionSyntax @iobj:
-            case ObjectCreationExpressionSyntax @obj:
                 throw new NotImplementedException();
+            case ObjectCreationExpressionSyntax @obj:
+            {
+                var constructor = (RealizerFunction)SymbolsMap(RefOf(obj));
+                var objtype = (RealizerStructure)constructor.Parent!;
+                
+                return new Alloca(new NodeTypeReference(objtype));
+                //return new Self();
+            }
         
             case MemberAccessExpressionSyntax memberAccess:
             {
@@ -326,14 +338,43 @@ public partial class CSharpCompressorUnit
                 if (r.MethodKind != MethodKind.BuiltinOperator)
                     return new Call(t, new Member(SymbolsMap(r)), [expl, expr]);
                  
-                return bin.Kind() switch
+                return bin.OperatorToken.Text switch
                 {
-                    SyntaxKind.AddExpression => new Add(t, expl, expr),
+                    "+" => new Add(t, expl, expr),
+                    "*" => new Mul(t, expl, expr),
+                    
+                    "==" => new Cmp(ComparissonOperation.Equal, expl, expr),
+                    "!=" => new Cmp(ComparissonOperation.NotEqual, expl, expr),
                     
                     _ => throw new UnreachableException()
                 };
             }
-            
+
+            case CastExpressionSyntax @cast:
+            {
+                var expression =  ParseExpression(cast.Expression, ref cell, localsMap);
+                
+                var sourceType = expression.Type;
+                var targetType = TypeOf(TypeOf(cast));
+
+                switch (targetType)
+                {
+                    case IntegerTypeReference @i when sourceType is IntegerTypeReference:
+                        return new IntTypeCast(i, expression);
+                    
+                    case IntegerTypeReference @i when sourceType is ReferenceTypeReference:
+                        return new IntFromPtr(i, expression);
+                    
+                    case ReferenceTypeReference @r when sourceType is IntegerTypeReference:
+                        return new PtrFromInt(r, expression);
+                    
+                    case ReferenceTypeReference @r when sourceType is ReferenceTypeReference:
+                        throw new NotImplementedException();
+                    
+                    default: throw new InvalidOperationException();
+                }
+            }
+
             default: throw new UnreachableException();
         }
     }
@@ -450,6 +491,10 @@ public partial class CSharpCompressorUnit
     
     private TypeReference TypeOf(ITypeSymbol typeSymbol)
     {
+        if (typeSymbol == null!) return null!; // void
+        if (typeSymbol is IPointerTypeSymbol @pointerTypeSymbol)
+            return new ReferenceTypeReference(TypeOf(pointerTypeSymbol.BaseType!));
+        
         IEnumerable<ISymbol> globalParts = [..typeSymbol.ContainingNamespace.ConstituentNamespaces, typeSymbol];
         var global = string.Join('.', globalParts.Select(e => e.Name));
 
@@ -469,6 +514,9 @@ public partial class CSharpCompressorUnit
             case "System.UInt64": return new IntegerTypeReference(false, 64);
             case "System.Int128": return new IntegerTypeReference(true, 128);
             case "System.UInt128": return new IntegerTypeReference(false, 128);
+            
+            case "System.IntPtr": return new IntegerTypeReference(false, 0);
+            case "System.UIntPtr": return new IntegerTypeReference(true, 0);
             
             case "System.String": return new SliceTypeReference(new IntegerTypeReference(false, 8));
         }

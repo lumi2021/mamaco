@@ -34,4 +34,8 @@
       <Content Include="Libs\.idea\workspace.xml" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Libs\System\Core\Numerics\" />
+    </ItemGroup>
+
 </Project>

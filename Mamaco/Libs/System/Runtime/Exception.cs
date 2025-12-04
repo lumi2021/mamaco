@@ -19,9 +19,7 @@ public class Exception //: ISerializable
 
 
 
-    public override string ToString()
-    {
-        return "TODO";
-    }
+    public override string ToString() => "Exception: No allocator to concatenate this shit so " +
+                                         "imagine an meaningfull error message here";
 
 }

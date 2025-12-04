@@ -1,17 +1,16 @@
 using System.Diagnostics;
+using System.Realizer;
 
 namespace System;
 
 public class Type
 {
 
-    public string Name
-    {
-        get => throw new UnreachableException();
-    }
-    public string FullName
-    {
-        get => throw new UnreachableException();
-    }
+    private void* metadataPtr;
     
+    public string Name { get => Intrinsics.RealizerGetStructFullName(metadataPtr); }
+    public string FullName { get => Intrinsics.RealizerGetStructFullName(metadataPtr); }
+
+    
+    internal Type(void* metadataPtr) => this.metadataPtr = metadataPtr;
 }

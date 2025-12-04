@@ -3,7 +3,7 @@ namespace Tq.Realizer.Core.Configuration.LangOutput;
 public interface IOutputConfiguration
 {
     public bool BakeGenerics { get; init; }
-    public UnnestMembersOptions UnnestMembersOption { get; init; }
+    public AbstractingOptions AbstractingOptions { get; init; }
     
     
     public byte MemoryUnit { get; init; }
@@ -28,9 +28,12 @@ public enum GenericAllowedFeatures
 }
 
 [Flags]
-public enum UnnestMembersOptions
+public enum AbstractingOptions
 {
     None = 1 << 0,
-    NoNamespaces = 1 << 1,
-    ForceStaticFunctions = 1 << 2,
+    
+    UnwrapNamespaces = 1 << 1,
+    UnwrapStructs = 1 << 2,
+    
+    NoSelfInstructions = 1 << 2,
 }

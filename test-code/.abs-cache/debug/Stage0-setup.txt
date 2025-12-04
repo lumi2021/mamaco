@@ -86,7 +86,7 @@ module @System {
 	
 		func @ToString() []u8 {	
 			entry:
-				ret "TODO"
+				ret []u8 add "Exception: No allocator to concatenate this shit so ", "imagine an meaningfull error message here"
 			
 		}
 	}
@@ -129,7 +129,148 @@ module @System {
 		}
 	}
 
+	struct @UnreachableException : @System.Exception {
+		func @.ctor(*@System.UnreachableException .instance) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+				ret
+			
+		}
+	
+		func @.ctor(*@System.UnreachableException .instance, []u8 message) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+				ret
+			
+		}
+	
+		func @.ctor(*@System.UnreachableException .instance, []u8 message, *@System.Exception innerException) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, %message, %innerException)
+				ret
+			
+		}
+	
+		func @ToString() []u8 {	
+			entry:
+				ret "Exception: Trying to execute unreachable code"
+			
+		}
+	}
+
+	struct @ArgumentException : @System.Exception {
+		func @.ctor(*@System.ArgumentException .instance) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+				ret
+			
+		}
+	
+		func @.ctor(*@System.ArgumentException .instance, []u8 message) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+				ret
+			
+		}
+	
+		func @.ctor(*@System.ArgumentException .instance, []u8 message, *@System.Exception innerException) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, %message, %innerException)
+				ret
+			
+		}
+	
+		func @ToString() []u8 {	
+			entry:
+				ret "Exception: Idk what this one specifically is"
+			
+		}
+	}
+
+	struct @OutOfMemoryException : @System.Exception {
+		func @.ctor(*@System.OutOfMemoryException .instance) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+				ret
+			
+		}
+	
+		func @.ctor(*@System.OutOfMemoryException .instance, []u8 message) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+				ret
+			
+		}
+	
+		func @.ctor(*@System.OutOfMemoryException .instance, []u8 message, *@System.Exception innerException) void {	
+			entry:
+				call void @System.Exception..ctor(%.instance, %message, %innerException)
+				ret
+			
+		}
+	
+		func @ToString() []u8 {	
+			entry:
+				ret "Exception: Out Of Memory"
+			
+		}
+	}
+
 	namespace @Runtime {
+		namespace @InteropServices {
+			namespace @NativeMemory {
+				import "" "Sys_Malloc" func @Sys_Malloc(iptr size) *opaque {}
+			
+				import "" "Sys_Free" func @Sys_Free(*opaque ptr) void {}
+			
+				import "" "Sys_Realloc" func @Sys_Realloc(*opaque ptr, iptr new_size) *opaque {}
+			
+				import "" "Sys_AlignedAlloc" func @Sys_AlignedAlloc(iptr alignment, iptr size) *opaque {}
+			
+				import "" "Sys_AlignedFree" func @Sys_AlignedFree(*opaque ptr) void {}
+			
+				import "" "Sys_AlignedRealloc" func @Sys_AlignedRealloc(*opaque ptr, iptr alignment, iptr new_size) *opaque {}
+			
+				func @AlignedAlloc(iptr byteCount, iptr alignment) *opaque {	
+					entry:
+						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_AlignedAlloc(%alignment, %byteCount)
+					
+				}
+			
+				func @AlignedFree(*opaque ptr) void {	
+					entry:
+						call void @System.Runtime.InteropServices.NativeMemory.Sys_AlignedFree(%ptr)
+						ret
+					
+				}
+			
+				func @AlignedRealloc(*opaque ptr, iptr byteCount, iptr alignment) *opaque {	
+					entry:
+						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_AlignedRealloc(%ptr, %alignment, %byteCount)
+					
+				}
+			
+				func @Alloc(iptr byteCount) *opaque {	
+					entry:
+						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_Malloc(%byteCount)
+					
+				}
+			
+				func @Free(*opaque ptr) void {	
+					entry:
+						call void @System.Runtime.InteropServices.NativeMemory.Sys_Free(%ptr)
+						ret
+					
+				}
+			
+				func @Realloc(*opaque ptr, iptr byteCount) *opaque {	
+					entry:
+						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_Realloc(%ptr, %byteCount)
+					
+				}
+			}
+		}
+	
 		namespace @CompilerServices {
 			struct @IsExternalInit : @System.Object {}
 		}
@@ -254,6 +395,9 @@ module @System {
 	struct @ValueType : @System.Object {}
 
 	struct @Type : @System.Object {
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 1
+		field *opaque @metadataPtr
+	
 		property []u8 @Name { get = @System.Type.get_Name }
 	
 		func @get_Name() []u8 {	
@@ -270,6 +414,13 @@ module @System {
 			
 		}
 	
+		func @.ctor(*@System.Type .instance, *opaque metadataPtr) void {	
+			entry:
+				self->@System.Type.metadataPtr = %metadataPtr
+				ret
+			
+		}
+	
 		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
 		field []u8 @<Name>k__BackingField
 	
@@ -281,10 +432,12 @@ module @System {
 
 	struct @Decimal : @System.ValueType {}
 
+	struct @Delegate : @System.Object {}
+
 	struct @Object {
 		func @GetType() *@System.Type {	
 			entry:
-				throw 
+				ret alloca @System.Type
 			
 		}
 	
@@ -292,6 +445,24 @@ module @System {
 			entry:
 				ret call *@System.Type self->@System.Object.GetType()->@System.Type.FullName
 			
+		}
+	
+		func @Equals(*@System.Object obj) u1 {	
+			entry:
+				ret cmp Equal call *opaque @System.Realizer.Intrinsics.RealizerGetObjectPointer(self), call *opaque @System.Realizer.Intrinsics.RealizerGetObjectPointer(%obj)
+			
+		}
+	
+		func @GetHashCode() i32 {	
+			entry:
+				ret call *opaque @System.Realizer.Intrinsics.RealizerGetObjectPointer(self) as i32
+			
+		}
+	}
+
+	namespace @Realizer {
+		namespace @Intrinsics {
+			import "" "RealizerGetObjectPointer" func @RealizerGetObjectPointer(*@System.Object instance) *opaque {}
 		}
 	}
 }
