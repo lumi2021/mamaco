@@ -4,3 +4,6 @@
 [submodule "RealizerModules/target-LLVM"]
 	path = RealizerModules/target-LLVM
 	url = git@github.com:tqlang/target-LLVM.git
+[submodule "RealizerModules/target-CLR"]
+	path = RealizerModules/target-CLR
+	url = git@github.com:tqlang/target-CLR.git
