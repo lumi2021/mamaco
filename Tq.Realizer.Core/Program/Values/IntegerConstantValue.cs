@@ -1,14 +1,13 @@
 using System.Numerics;
+using Tq.Realizer.Core.Builder.References;
 
 namespace Tq.Realizer.Core.Intermediate.Values;
 
-public class IntegerConstantValue(ushort bitSize, BigInteger value) : RealizerConstantValue
+public class IntegerConstantValue(IntegerTypeReference typeref, BigInteger value) : RealizerConstantValue
 {
-    public readonly ushort BitSize = bitSize > 256
-        ? throw new ArgumentOutOfRangeException()
-        : bitSize;
+    public readonly IntegerTypeReference Type = typeref;
     public readonly BigInteger Value = value;
 
-    public override string ToString() => BitSize == 0 ? $"(iptr {Value})" : $"(i{BitSize} {Value})";
-    public override int GetHashCode() => HashCode.Combine(BitSize, Value.GetHashCode());
+    public override string ToString() => $"({Type} {Value})";
+    public override int GetHashCode() => HashCode.Combine(Type.GetHashCode(), Value.GetHashCode());
 }

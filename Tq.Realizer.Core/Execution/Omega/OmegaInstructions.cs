@@ -18,65 +18,100 @@ public static class OmegaInstructions
         public TypeReference? Type { get; }
     }
     public interface IOmegaAssignable : IOmegaExpression {}
-    public interface IOmegaCallable : IOmegaExpression {}
+
+    public interface IOmegaCallable : IOmegaExpression
+    {
+        public new CallableTypeReference Type { get; }
+    }
     public interface IOmegaBranch : IOmegaInstruction {}
     
     
     // Misc
-    public readonly struct Invalid : IOmegaInstruction
+    public class Invalid : IOmegaInstruction
     {
         public override string ToString() => "unreachable";
     }
-    public readonly struct Nop : IOmegaInstruction
+    public class Nop : IOmegaInstruction
     {
         public override string ToString() => "nop";
     }
 
     // Values
-    public readonly struct Register(TypeReference? type, u16 i) : IOmegaAssignable, IOmegaCallable
+    public class Register(TypeReference? type, u16 i) : IOmegaAssignable, IOmegaCallable
     {
         public TypeReference? Type => type;
+        CallableTypeReference IOmegaCallable.Type => (CallableTypeReference)Type!;
+        
         public readonly u16 Index = i;
         public override string ToString() => $"{Type} %{Index}";
+
     }
-    public readonly struct Argument(RealizerParameter p) : IOmegaAssignable, IOmegaCallable
+    public class Argument(RealizerParameter p) : IOmegaAssignable, IOmegaCallable
     {
         public TypeReference? Type => Parameter.Type;
+        CallableTypeReference IOmegaCallable.Type => (CallableTypeReference)Type!;
+        
         public readonly RealizerParameter Parameter = p;
         public override string ToString() => $"%{Parameter.Name}";
     }
-    public readonly struct Member(RealizerMember m) : IOmegaAssignable, IOmegaCallable
+    public class Member(RealizerMember m) : IOmegaAssignable, IOmegaCallable
     {
         public TypeReference Type => Node switch
         {
-            RealizerFunction @f => f.ReturnType!,
+            RealizerFunction @f => new CallableTypeReference(f),
+            RealizerField @f => f.Type!,
             _ => throw new UnreachableException()
         };
+        CallableTypeReference IOmegaCallable.Type => (CallableTypeReference)Type!;
+        
         public readonly RealizerMember Node = m;
         public override string ToString() => Node.ToString();
     }
-    public readonly struct Constant(RealizerConstantValue v) : IOmegaExpression
+    public class Constant(RealizerConstantValue v) : IOmegaExpression
     {
         public TypeReference? Type => null!;
         public readonly RealizerConstantValue Value = v;
         public override string ToString() => $"{Value}";
     }
-    public readonly struct Access(IOmegaExpression l, IOmegaExpression r) : IOmegaAssignable, IOmegaCallable
+    public class Access(IOmegaExpression l, Member r) : IOmegaAssignable, IOmegaCallable
     {
         public TypeReference? Type => Right.Type;
+        CallableTypeReference IOmegaCallable.Type => (CallableTypeReference)Type!;
         
         public readonly IOmegaExpression Left = l;
-        public readonly IOmegaExpression Right = r;
+        public readonly Member Right = r;
         public override string ToString() => $"{Left}->{Right}";
     }
-    public readonly struct Self() : IOmegaExpression
+    public class Self() : IOmegaExpression
     {
         public TypeReference? Type => null;
         public override string ToString() => "self";
     }
     
+    public class Ref(IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => new ReferenceTypeReference(Expression.Type);
+        public readonly IOmegaExpression Expression = exp;
+        public override string ToString() => $"ref {Expression}";
+    }
+    public class Val(IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => ((ReferenceTypeReference)exp.Type!).Subtype;
+
+        public readonly IOmegaExpression Expression = exp is { Type: ReferenceTypeReference }
+            ? exp : throw new ArgumentException();
+
+        public override string ToString() => $"val {Expression}";
+    }
+    public class Typeof(IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => new MetadataTypeReference(Expression.Type!);
+        public readonly IOmegaExpression Expression = exp;
+        public override string ToString() => $"typeof {Expression}";
+    }
+
     // Statemets
-    public readonly struct Assignment(IOmegaAssignable l, IOmegaExpression r) : IOmegaInstruction
+    public class Assignment(IOmegaAssignable l, IOmegaExpression r) : IOmegaInstruction
     {
         public readonly IOmegaAssignable Left = l;
         public readonly IOmegaExpression Right = r;
@@ -84,21 +119,22 @@ public static class OmegaInstructions
     }
     
     // Expressions
-    public readonly struct Alloca(TypeReference type) : IOmegaExpression
+    public class Alloca(TypeReference type) : IOmegaExpression
     {
-        public TypeReference Type => type;
+        public TypeReference Type => new ReferenceTypeReference(type);
         public override string ToString() => $"alloca {Type}";
     }
-    public readonly struct Call(TypeReference? type, IOmegaCallable c, params IOmegaExpression[] args) : IOmegaExpression
+    public class Call(IOmegaCallable c, params IOmegaExpression[] args) : IOmegaExpression
     {
-        public TypeReference Type => type;
+        public TypeReference? Type => Callable.Type.ReturnType;
+        
         public readonly IOmegaCallable Callable = c;
         public readonly IOmegaExpression[] Arguments = args;
         public override string ToString()
         {
             var sb = new StringBuilder();
 
-            sb.Append($"call {Type?.ToString() ?? "void"} {Callable}");
+            sb.Append($"call {Callable.Type.ReturnType?.ToString() ?? "void"} {Callable}");
             sb.Append("(");
             sb.Append(string.Join(", ", Arguments));
             sb.Append(')');
@@ -106,14 +142,14 @@ public static class OmegaInstructions
             return sb.ToString();
         }
     }
-    public readonly struct Add(TypeReference type, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
+    public class Add(TypeReference type, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
     {
         public TypeReference? Type => type;
         public readonly IOmegaExpression Left = l;
         public readonly IOmegaExpression Right = r;
         public override string ToString() => $"{Type} add {Left}, {Right}";
     }
-    public readonly struct Mul(TypeReference type, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
+    public class Mul(TypeReference type, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
     {
         public TypeReference? Type => type;
         public readonly IOmegaExpression Left = l;
@@ -121,7 +157,7 @@ public static class OmegaInstructions
         public override string ToString() => $"{Type} mul {Left}, {Right}";
     }
 
-    public readonly struct Cmp(ComparissonOperation op, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
+    public class Cmp(ComparissonOperation op, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
     {
         public TypeReference? Type => new IntegerTypeReference(false, 1);
         public readonly IOmegaExpression Left = l;
@@ -131,7 +167,7 @@ public static class OmegaInstructions
         public override string ToString() => $"cmp {Op} {Left}, {Right}";
     }
     
-    public readonly struct IntTypeCast(IntegerTypeReference toType, IOmegaExpression exp) : IOmegaExpression
+    public class IntTypeCast(IntegerTypeReference toType, IOmegaExpression exp) : IOmegaExpression
     {
         public TypeReference? Type => toType;
         public readonly IOmegaExpression Exp = exp.Type is IntegerTypeReference
@@ -139,31 +175,31 @@ public static class OmegaInstructions
 
         public override string ToString() => $"{Exp} as {Type}";
     }
-    public readonly struct IntFromPtr(IntegerTypeReference toType, IOmegaExpression exp) : IOmegaExpression
+    public class IntFromPtr(IntegerTypeReference toType, IOmegaExpression exp) : IOmegaExpression
     {
         public TypeReference? Type => toType;
-        public readonly IOmegaExpression Exp = exp.Type is ReferenceTypeReference
+        public readonly IOmegaExpression Expression = exp.Type is ReferenceTypeReference
             ? exp : throw new ArgumentException();
 
-        public override string ToString() => $"{Exp} as {Type}";
+        public override string ToString() => $"{Expression} as {Type}";
     }
-    public readonly struct PtrFromInt(ReferenceTypeReference toType, IOmegaExpression exp) : IOmegaExpression
+    public class PtrFromInt(ReferenceTypeReference toType, IOmegaExpression exp) : IOmegaExpression
     {
         public TypeReference? Type => toType;
-        public readonly IOmegaExpression Exp = exp.Type is IntegerTypeReference
+        public readonly IOmegaExpression Expression = exp.Type is IntegerTypeReference
             ? exp : throw new ArgumentException();
 
-        public override string ToString() => $"{Exp} as {Type}";
+        public override string ToString() => $"{Expression} as {Type}";
     }
 
     
     // Control flow
-    public readonly struct Ret(IOmegaExpression? value) : IOmegaBranch
+    public class Ret(IOmegaExpression? value) : IOmegaBranch
     {
         public readonly IOmegaExpression? Value = value;
         public override string ToString() => "ret" + (Value == null ? "" : $" {Value}");
     }
-    public readonly struct Throw(IOmegaExpression fault) : IOmegaBranch
+    public class Throw(IOmegaExpression fault) : IOmegaBranch
     {
         public readonly IOmegaExpression Fault = fault;
         public override string ToString() => $"throw {Fault}";

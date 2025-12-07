@@ -3,7 +3,7 @@ using System.Realizer;
 
 namespace System;
 
-public class Type
+public struct Type
 {
 
     private void* metadataPtr;

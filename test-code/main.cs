@@ -12,7 +12,7 @@ public class Program() {
         Console.WriteLine(TestField);
         TestField = 5 + 10;
         TestField *= 10;
-        Console.WriteLine(TestField);
+        //Console.WriteLine(TestField);
 
         TestFieldShort = 5;
         TestFieldShort += 5;

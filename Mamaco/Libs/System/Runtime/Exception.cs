@@ -3,8 +3,7 @@ namespace System;
 /// <summary>
 /// Represents errors that occur during application execution.
 /// </summary>
-//[Serializable]
-public class Exception //: ISerializable
+public class Exception
 {
 
     private string? _message;

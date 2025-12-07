@@ -10,10 +10,10 @@ namespace Mamaco;
 public class CSharpCompilerUnit
 {
 
-    private List<(SyntaxTree, SyntaxTree, (int, int)[])> sources = [];
-    private CSharpCompilation compilation = null!;
+    private readonly List<(SyntaxTree, SyntaxTree, (int, int)[])> _sources = [];
+    private CSharpCompilation _compilation = null!;
     
-    public CSharpCompilation Compilation => compilation;
+    public CSharpCompilation Compilation => _compilation;
     
     public void Parse(string source, string path)
     {
@@ -31,27 +31,47 @@ public class CSharpCompilerUnit
         var newRoot = rewriter.Visit(root);
         var newTree = CSharpSyntaxTree.Create((CompilationUnitSyntax)newRoot);
         
-        sources.Add((syntaxTree, newTree, rewriter.GetSpanShift()));
+        _sources.Add((syntaxTree, newTree, rewriter.GetSpanShift()));
     }
     
     public void Compile()
     {
-        
-        compilation = CSharpCompilation.Create(
+        _compilation = CSharpCompilation.Create(
             "Test",
-            sources.Select(e => e.Item2),
+            _sources.Select(e => e.Item2),
             [],
             new CSharpCompilationOptions(
                 outputKind: OutputKind.ConsoleApplication,
                 allowUnsafe: true,
                 nullableContextOptions: NullableContextOptions.Annotations)
         );
-    }
+        
+        if (_compilation.GetDiagnostics().Any(e => e.Severity == DiagnosticSeverity.Error)) return;
+        
+        var rewriter = new SyntaxPostprocessor(this);
+        for (var i = 0; i < _sources.Count; i++)
+        {
+            var source = _sources[i].Item2;
+            
+            var visited = (CSharpSyntaxNode)rewriter.Visit(source.GetRoot());
+            var newTree = CSharpSyntaxTree.Create(visited, (CSharpParseOptions)source.Options);
+            _compilation = _compilation.ReplaceSyntaxTree(source, newTree);
+            _compilation.GetSemanticModel(newTree);
 
+            var a = newTree.ToString();
+            
+            var sourceData = _sources[i];
+            sourceData.Item2 = newTree;
+            _sources[i] = sourceData;
+        }
+    }
+    
+    public void WipeSources() => _sources.Clear(); 
+    
     public ImmutableArray<Diagnostic> GetDiagnostics()
     {
         var processed = new List<Diagnostic>();
-        var diagnostics = compilation.GetDiagnostics();
+        var diagnostics = _compilation.GetDiagnostics();
 
         foreach (var diagnostic in diagnostics)
         {
@@ -64,7 +84,7 @@ public class CSharpCompilerUnit
 
             if (tree != null)
             {
-                var treeData = sources.Find(e => e.Item2 == tree);
+                var treeData = _sources.Find(e => e.Item2 == tree);
                 var treeSpams = treeData.Item3;
                 foreach (var (spam_start, spam_offset) in treeSpams)
                 {
@@ -102,11 +122,11 @@ public class CSharpCompilerUnit
         return [..processed];
     }
     
+    
     private class SyntaxPreprocessor : CSharpSyntaxRewriter
     {
-        private List<(int beguin, int offset)> spanShift = [];
-        
-        public (int beguin, int offset)[] GetSpanShift() => [.. spanShift];
+        private List<(int beguin, int offset)> _spanShift = [];
+        public (int beguin, int offset)[] GetSpanShift() => [.. _spanShift];
         
         public override SyntaxNode VisitClassDeclaration(ClassDeclarationSyntax node)
         {
@@ -123,9 +143,29 @@ public class CSharpCompilerUnit
 
             var beggin = oldSpan.Start;
             var offset =  oldSpan.End - newSpan.End;
-            spanShift.Add((beggin, offset));
+            _spanShift.Add((beggin, offset));
 
             return base.VisitClassDeclaration(node)!;
+        }
+
+        public override SyntaxNode? VisitStructDeclaration(StructDeclarationSyntax node)
+        {
+            if (node.Modifiers.Any(m => m.IsKind(SyntaxKind.UnsafeKeyword)))
+                return base.VisitStructDeclaration(node)!;
+
+            var oldSpan = node.Modifiers.Span;
+            
+            var newModifiers = node.Modifiers.Add(SyntaxFactory.Token(
+                SyntaxKind.UnsafeKeyword));
+            node = node.WithModifiers(newModifiers);
+
+            var newSpan = node.Modifiers.Span;
+
+            var beggin = oldSpan.Start;
+            var offset =  oldSpan.End - newSpan.End;
+            _spanShift.Add((beggin, offset));
+
+            return base.VisitStructDeclaration(node)!;
         }
 
         public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
@@ -143,7 +183,7 @@ public class CSharpCompilerUnit
 
             var beggin = oldSpan.Start;
             var offset = oldSpan.End - newSpan.End;
-            spanShift.Add((beggin, offset));
+            _spanShift.Add((beggin, offset));
 
             return base.VisitMethodDeclaration(node)!;
         }
@@ -163,10 +203,42 @@ public class CSharpCompilerUnit
 
             var beggin = oldSpan.Start;
             var offset = oldSpan.End - newSpan.End;
-            spanShift.Add((beggin, offset));
+            _spanShift.Add((beggin, offset));
 
             return base.VisitConstructorDeclaration(node)!;
         }
     }
-}
+    
+    private class SyntaxPostprocessor(CSharpCompilerUnit parent) : CSharpSyntaxRewriter
+    {
 
+        private CSharpCompilerUnit _parent = parent;
+        private CSharpCompilation Compilation => _parent._compilation;
+    
+        public override SyntaxNode? VisitBinaryExpression(BinaryExpressionSyntax node)
+        {
+            if (node.Kind() == SyntaxKind.AddExpression)
+            {
+                var sema = Compilation.GetSemanticModel(node.SyntaxTree);
+                var info = sema.GetTypeInfo(node).ConvertedType;
+            
+                if (info?.SpecialType == SpecialType.System_String)
+                {
+                    return SyntaxFactory.InvocationExpression(
+                        
+                        SyntaxFactory.ParseTypeName("global::System.String.Concat"),
+                        
+                        SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SeparatedList([
+                                SyntaxFactory.Argument(node.Left),
+                                SyntaxFactory.Argument(node.Right)
+                            ])
+                        )
+                    );
+                }
+            }
+        
+            return base.VisitBinaryExpression(node);
+        }
+    }
+}

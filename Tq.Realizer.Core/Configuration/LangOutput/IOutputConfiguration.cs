@@ -32,8 +32,10 @@ public enum AbstractingOptions
 {
     None = 1 << 0,
     
-    UnwrapNamespaces = 1 << 1,
-    UnwrapStructs = 1 << 2,
+    NoNamespaces = 1 << 1,
     
-    NoSelfInstructions = 1 << 2,
+    NoInstanceMethod = 1 << 2,
+    NoInheritance = 1 << 3,
+    
+    NoObjectOrientation = NoInstanceMethod | NoInheritance,
 }

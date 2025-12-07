@@ -36,6 +36,7 @@
 
     <ItemGroup>
       <Folder Include="Libs\System\Core\Numerics\" />
+      <Folder Include="Libs\System\Runtime\InteropServices\" />
     </ItemGroup>
 
 </Project>

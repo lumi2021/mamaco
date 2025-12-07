@@ -19,7 +19,8 @@ public partial class CSharpCompressorUnit
     {
         foreach (var (symbol, builder) in _symbolsMap_2)
         {
-        
+            if (_intrinsincsMap_2.ContainsKey(symbol)) continue;
+            
             SyntaxNode? body;
             
             switch (symbol)
@@ -66,7 +67,7 @@ public partial class CSharpCompressorUnit
                                     t.Expression, ref cell, [],
                                     expectedType: baseRef.Parameters[i].Type)));
 
-                                cell.Writer.Call(null, new Member(baseRef), [.. args]);
+                                cell.Writer.Call(new Member(baseRef), [.. args]);
                             }
                         } break;
                         
@@ -257,11 +258,11 @@ public partial class CSharpCompressorUnit
 
                 if (fRetType == null)
                 {
-                    cell.Writer.Call(null, (IOmegaCallable)callee, [.. argsList]);
+                    cell.Writer.Call((IOmegaCallable)callee, [.. argsList]);
                     return null!;
                 }
 
-                return new Call(fRetType, (IOmegaCallable)callee, [.. argsList]);
+                return new Call((IOmegaCallable)callee, [.. argsList]);
             }
         
             case LiteralExpressionSyntax @lit:
@@ -275,10 +276,21 @@ public partial class CSharpCompressorUnit
             case ObjectCreationExpressionSyntax @obj:
             {
                 var constructor = (RealizerFunction)SymbolsMap(RefOf(obj));
-                var objtype = (RealizerStructure)constructor.Parent!;
+                var objstruct = (RealizerStructure)constructor.Parent!;
+                var objtype = new NodeTypeReference(objstruct);
+                var objsymbol = (ITypeSymbol)SymbolsMap(objstruct);
                 
-                return new Alloca(new NodeTypeReference(objtype));
-                //return new Self();
+                if (objsymbol.IsValueType)
+                {
+                    var reg = cell.Writer.GetNewRegister(new ReferenceTypeReference(objtype));
+                    cell.Writer.Assignment(reg, new Alloca(objtype));
+                    cell.Writer.Call(new Member(constructor), [reg]);
+                    return new Val(reg);
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
             }
         
             case MemberAccessExpressionSyntax memberAccess:
@@ -291,7 +303,7 @@ public partial class CSharpCompressorUnit
                 
                 return new Access(
                     ParseExpression(left, ref cell, localsMap),
-                    ParseExpression(right, ref cell, localsMap, instanceRelative: true)
+                    ParseExpression(right, ref cell, localsMap, instanceRelative: true) as Member ?? throw new UnreachableException()
                 );
             }
             
@@ -320,35 +332,30 @@ public partial class CSharpCompressorUnit
                     _ => throw new UnreachableException()
                 };
 
-                return accessLeft == null ? accessRight : new Access(accessLeft, accessRight);
+                return accessLeft == null
+                    ? accessRight
+                    : new Access(accessLeft, accessRight as Member ?? throw new UnreachableException());
+            }
+
+            case QualifiedNameSyntax @qns:
+            {
+                var memberSymbol = RefOf(qns);
+                return memberSymbol switch
+                {
+                    IMethodSymbol @method => new Member(SymbolsMap(method)),
+                    IFieldSymbol @field => new Member(SymbolsMap(field)),
+                    IPropertySymbol @prop => new Member(SymbolsMap(prop)),
+
+                    IParameterSymbol @arg => new Argument(SymbolsMap(arg)),
+
+                    _ => throw new UnreachableException()
+                };
             }
             
             case ThisExpressionSyntax:
                 return new Self();
 
-            case BinaryExpressionSyntax @bin:
-            {
-                
-                var r = (IMethodSymbol)RefOf(bin);
-                var t = TypeOf(TypeOf(bin));
-                
-                var expl = ParseExpression(bin.Left, ref cell, localsMap, expectedType: t);
-                var expr = ParseExpression(bin.Right, ref cell, localsMap, expectedType: t);
-                
-                if (r.MethodKind != MethodKind.BuiltinOperator)
-                    return new Call(t, new Member(SymbolsMap(r)), [expl, expr]);
-                 
-                return bin.OperatorToken.Text switch
-                {
-                    "+" => new Add(t, expl, expr),
-                    "*" => new Mul(t, expl, expr),
-                    
-                    "==" => new Cmp(ComparissonOperation.Equal, expl, expr),
-                    "!=" => new Cmp(ComparissonOperation.NotEqual, expl, expr),
-                    
-                    _ => throw new UnreachableException()
-                };
-            }
+            case BinaryExpressionSyntax @bin: return ParseExpressin_BinExp(@bin, ref cell, localsMap, expectedType);
 
             case CastExpressionSyntax @cast:
             {
@@ -405,7 +412,7 @@ public partial class CSharpCompressorUnit
                 
                 if (r.MethodKind != MethodKind.BuiltinOperator)
                 {
-                    cell.Writer.Assignment(expl, new Call(t, new Member(SymbolsMap(r)), [expl, expr]));
+                    cell.Writer.Assignment(expl, new Call(new Member(SymbolsMap(r)), expl, expr));
                     return;
                 }
                 
@@ -425,6 +432,35 @@ public partial class CSharpCompressorUnit
         }
     }
 
+    private IOmegaExpression ParseExpressin_BinExp(
+        BinaryExpressionSyntax node,
+        ref OmegaCodeCell cell,
+        Dictionary<ISymbol, int> localsMap,
+        TypeReference? expectedType)
+    {
+        var stringType = (ITypeSymbol)IntrinsincsMap(IntrinsincElements.Type_String);
+        
+        var r = (IMethodSymbol)RefOf(node);
+        var t = expectedType;
+        
+        var expl = ParseExpression(node.Left, ref cell, localsMap, expectedType: expectedType);
+        var expr = ParseExpression(node.Right, ref cell, localsMap, expectedType: expectedType);
+
+        if (r.MethodKind != MethodKind.BuiltinOperator)
+            return new Call(new Member(SymbolsMap(r)), [expl, expr]);
+                    
+        return node.OperatorToken.Text switch
+        {
+            "+" => new Add(t, expl, expr),
+            "*" => new Mul(t, expl, expr),
+                    
+            "==" => new Cmp(ComparissonOperation.Equal, expl, expr),
+            "!=" => new Cmp(ComparissonOperation.NotEqual, expl, expr),
+                    
+            _ => throw new UnreachableException()
+        };
+    }
+    
     private RealizerConstantValue ParseConstantValue(object? value, TypeReference? type = null)
     {
         switch (type)
@@ -435,16 +471,16 @@ public partial class CSharpCompressorUnit
             case IntegerTypeReference @i:
                 return value switch
                 {
-                    sbyte @v => new IntegerConstantValue(i.Bits, v),
-                    byte @v => new IntegerConstantValue(i.Bits, v),
-                    short @v => new IntegerConstantValue(i.Bits, v),
-                    ushort @v => new IntegerConstantValue(i.Bits, v),
-                    int @v => new IntegerConstantValue(i.Bits, v),
-                    uint @v => new IntegerConstantValue(i.Bits, v),
-                    long @v => new IntegerConstantValue(i.Bits, v),
-                    ulong @v => new IntegerConstantValue(i.Bits, v),
-                    Int128 @v => new IntegerConstantValue(i.Bits, v),
-                    UInt128 @v => new IntegerConstantValue(i.Bits, v),
+                    sbyte @v => new IntegerConstantValue(i, v),
+                    byte @v => new IntegerConstantValue(i, v),
+                    short @v => new IntegerConstantValue(i, v),
+                    ushort @v => new IntegerConstantValue(i, v),
+                    int @v => new IntegerConstantValue(i, v),
+                    uint @v => new IntegerConstantValue(i, v),
+                    long @v => new IntegerConstantValue(i, v),
+                    ulong @v => new IntegerConstantValue(i, v),
+                    Int128 @v => new IntegerConstantValue(i, v),
+                    UInt128 @v => new IntegerConstantValue(i, v),
                     _ => throw new UnreachableException()
                 };
             
@@ -454,22 +490,23 @@ public partial class CSharpCompressorUnit
         {
             null => new NullConstantValue(type ?? throw new ArgumentNullException(nameof(type))),
 
-            bool @v => new IntegerConstantValue(1, v ? 1 : 0),
+            bool @v => new IntegerConstantValue(new IntegerTypeReference(false, 1), v ? 1 : 0),
             
-            sbyte @v => new IntegerConstantValue(8, v),
-            byte @v => new IntegerConstantValue(8, v),
-            short @v => new IntegerConstantValue(16, v),
-            ushort @v => new IntegerConstantValue(16, v),
-            int @v => new IntegerConstantValue(32, v),
-            uint @v => new IntegerConstantValue(32, v),
-            long @v => new IntegerConstantValue(64, v),
-            ulong @v => new IntegerConstantValue(64, v),
-            Int128 @v => new IntegerConstantValue(128, v),
-            UInt128 @v => new IntegerConstantValue(128, v),
+            sbyte @v => new IntegerConstantValue(new IntegerTypeReference(true, 8), v),
+            byte @v => new IntegerConstantValue(new IntegerTypeReference(false, 8), v),
+            short @v => new IntegerConstantValue(new IntegerTypeReference(true, 16), v),
+            ushort @v => new IntegerConstantValue(new IntegerTypeReference(false, 16), v),
+            int @v => new IntegerConstantValue(new IntegerTypeReference(true, 32), v),
+            uint @v => new IntegerConstantValue(new IntegerTypeReference(false, 32), v),
+            long @v => new IntegerConstantValue(new IntegerTypeReference(true, 64), v),
+            ulong @v => new IntegerConstantValue(new IntegerTypeReference(false, 64), v),
+            Int128 @v => new IntegerConstantValue(new IntegerTypeReference(true, 128), v),
+            UInt128 @v => new IntegerConstantValue(new IntegerTypeReference(false, 128), v),
 
             string @s => new SliceConstantValue(
                 new IntegerTypeReference(false, 8), Encoding.UTF8.GetBytes(s)
-                    .Select(e => new IntegerConstantValue(8, e)).ToArray<RealizerConstantValue>()),
+                    .Select(e => new IntegerConstantValue(new IntegerTypeReference(false, 8), e))
+                    .ToArray<RealizerConstantValue>()),
             
             LiteralExpressionSyntax @lit => ParseConstantValue(lit.Token.Value, type),
             

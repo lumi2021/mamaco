@@ -1,5 +1,5 @@
 ; Program: placeholder
-; 2 modules
+; 3 modules
 
 module @TestCode {
 	struct @Program : @System.Object {
@@ -10,17 +10,15 @@ module @TestCode {
 		}
 	
 		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 64
-		field u64 @TestField = (i64 100)
+		field u64 @TestField = (u64 100)
 	
 		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = 16
 		field i16 @TestFieldShort = (i16 5)
 	
 		export "_start" func @Main() void {	
 			entry:
-				call void @System.Console.WriteLine(@TestCode.Program.TestField)
-				@TestCode.Program.TestField = i32 add (i32 5), (i32 10)
-				@TestCode.Program.TestField = u64 mul @TestCode.Program.TestField, (i64 10)
-				call void @System.Console.WriteLine(@TestCode.Program.TestField)
+				@TestCode.Program.TestField = u64 add (u64 5), (u64 10)
+				@TestCode.Program.TestField = u64 mul @TestCode.Program.TestField, (u64 10)
 				@TestCode.Program.TestFieldShort = (i16 5)
 				@TestCode.Program.TestFieldShort = i16 add @TestCode.Program.TestFieldShort, (i16 5)
 				ret
@@ -86,7 +84,7 @@ module @System {
 	
 		func @ToString() []u8 {	
 			entry:
-				ret []u8 add "Exception: No allocator to concatenate this shit so ", "imagine an meaningfull error message here"
+				ret call []u8 @System.String.Concat("Exception: No allocator to concatenate this shit so ", "imagine an meaningfull error message here")
 			
 		}
 	}
@@ -217,60 +215,6 @@ module @System {
 	}
 
 	namespace @Runtime {
-		namespace @InteropServices {
-			namespace @NativeMemory {
-				import "" "Sys_Malloc" func @Sys_Malloc(iptr size) *opaque {}
-			
-				import "" "Sys_Free" func @Sys_Free(*opaque ptr) void {}
-			
-				import "" "Sys_Realloc" func @Sys_Realloc(*opaque ptr, iptr new_size) *opaque {}
-			
-				import "" "Sys_AlignedAlloc" func @Sys_AlignedAlloc(iptr alignment, iptr size) *opaque {}
-			
-				import "" "Sys_AlignedFree" func @Sys_AlignedFree(*opaque ptr) void {}
-			
-				import "" "Sys_AlignedRealloc" func @Sys_AlignedRealloc(*opaque ptr, iptr alignment, iptr new_size) *opaque {}
-			
-				func @AlignedAlloc(iptr byteCount, iptr alignment) *opaque {	
-					entry:
-						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_AlignedAlloc(%alignment, %byteCount)
-					
-				}
-			
-				func @AlignedFree(*opaque ptr) void {	
-					entry:
-						call void @System.Runtime.InteropServices.NativeMemory.Sys_AlignedFree(%ptr)
-						ret
-					
-				}
-			
-				func @AlignedRealloc(*opaque ptr, iptr byteCount, iptr alignment) *opaque {	
-					entry:
-						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_AlignedRealloc(%ptr, %alignment, %byteCount)
-					
-				}
-			
-				func @Alloc(iptr byteCount) *opaque {	
-					entry:
-						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_Malloc(%byteCount)
-					
-				}
-			
-				func @Free(*opaque ptr) void {	
-					entry:
-						call void @System.Runtime.InteropServices.NativeMemory.Sys_Free(%ptr)
-						ret
-					
-				}
-			
-				func @Realloc(*opaque ptr, iptr byteCount) *opaque {	
-					entry:
-						ret call *opaque @System.Runtime.InteropServices.NativeMemory.Sys_Realloc(%ptr, %byteCount)
-					
-				}
-			}
-		}
-	
 		namespace @CompilerServices {
 			struct @IsExternalInit : @System.Object {}
 		}
@@ -394,7 +338,7 @@ module @System {
 
 	struct @ValueType : @System.Object {}
 
-	struct @Type : @System.Object {
+	struct @Type : @System.ValueType {
 		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 1
 		field *opaque @metadataPtr
 	
@@ -414,7 +358,7 @@ module @System {
 			
 		}
 	
-		func @.ctor(*@System.Type .instance, *opaque metadataPtr) void {	
+		func @.ctor(@System.Type .instance, *opaque metadataPtr) void {	
 			entry:
 				self->@System.Type.metadataPtr = %metadataPtr
 				ret
@@ -435,34 +379,55 @@ module @System {
 	struct @Delegate : @System.Object {}
 
 	struct @Object {
-		func @GetType() *@System.Type {	
+		func @GetType() @System.Type {	
 			entry:
-				ret alloca @System.Type
+				*@System.Type %0 = alloca *@System.Type
+				call void @System.Type..ctor(*@System.Type %0)
+				ret val *@System.Type %0
 			
 		}
 	
 		func @ToString() []u8 {	
 			entry:
-				ret call *@System.Type self->@System.Object.GetType()->@System.Type.FullName
+				ret call @System.Type self->@System.Object.GetType()->@System.Type.FullName
 			
 		}
 	
 		func @Equals(*@System.Object obj) u1 {	
 			entry:
-				ret cmp Equal call *opaque @System.Realizer.Intrinsics.RealizerGetObjectPointer(self), call *opaque @System.Realizer.Intrinsics.RealizerGetObjectPointer(%obj)
+				ret cmp Equal call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(self), call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(%obj)
 			
 		}
 	
 		func @GetHashCode() i32 {	
 			entry:
-				ret call *opaque @System.Realizer.Intrinsics.RealizerGetObjectPointer(self) as i32
+				ret call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(self) as i32
+			
+		}
+	}
+
+	namespace @String {
+		func @Concat([]u8 str0, []u8 str1) []u8 {	
+			entry:
+				ret "todo"
 			
 		}
 	}
 
 	namespace @Realizer {
-		namespace @Intrinsics {
-			import "" "RealizerGetObjectPointer" func @RealizerGetObjectPointer(*@System.Object instance) *opaque {}
-		}
+		namespace @Intrinsics {}
+	}
+}
+module @<RealizerIntrinsicsModule> {
+	func @RealizerGetStructMetadataPointer(*@System.Object object) *opaque {	
+		entry:
+			ret typeof %object
+		
+	}
+
+	func @RealizerGetObjectPointer(*@System.Object object) *@System.Object {	
+		entry:
+			ret ref %object
+		
 	}
 }

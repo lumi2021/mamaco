@@ -4,6 +4,8 @@ using Microsoft.CodeAnalysis;
 using Tq.Realizeer.Core.Program;
 using Tq.Realizeer.Core.Program.Builder;
 using Tq.Realizeer.Core.Program.Member;
+using Tq.Realizer.Core.Builder.References;
+using static Tq.Realizer.Core.Builder.Language.Omega.OmegaInstructions;
 
 
 namespace Mamaco;
@@ -40,11 +42,14 @@ public partial class CSharpCompressorUnit
             namespaceBuilder.Append(csModule.Name);
 
             foreach (var i in members) CompressMember(i, module, namespaceBuilder);
-            ImplementInstrinsics();
         }
+        
+        ImplementInstrinsics();
         
         _symbolsMap_1.TrimExcess();
         _symbolsMap_2.TrimExcess();
+        _intrinsincsMap_1.TrimExcess();
+        _intrinsincsMap_2.TrimExcess();
     }
     public void ProcessReferences()
     {
@@ -97,8 +102,9 @@ public partial class CSharpCompressorUnit
             {
                 switch (globalIdentifier)
                 {
-                    case "System.Realizer.Intrinsics.RealizerGetStructMetadataPointer": AddIntrinsinc(IntrinsincElements.Function_IntrinsincGetVtable, method); goto ret_lbl;
-                    case "System.Realizer.Intrinsics.RealizerGetStructFullName": AddIntrinsinc(IntrinsincElements.Function_IntrinsincGetFullName, method); goto ret_lbl;
+                    case "System.Realizer.Intrinsics.RealizerGetStructMetadataPointer": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetObjectType, method); goto ret_lbl;
+                    case "System.Realizer.Intrinsics.RealizerGetStructFullName": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetTypeFullName, method); goto ret_lbl;
+                    case "System.Realizer.Intrinsics.RealizerGetObjectPointer": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetObjectPointer, method); goto ret_lbl;
                         
                     default:
                         break; 
@@ -124,6 +130,8 @@ public partial class CSharpCompressorUnit
                     case TypeKind.Class:
                     case TypeKind.Struct:
                     {
+                        var forceStatic = false;
+                        
                         switch (globalIdentifier)
                         {
                             case "System.ExportAttribute": AddIntrinsinc(IntrinsincElements.Attribute_Export, typeClass); goto ret_lbl;
@@ -148,8 +156,8 @@ public partial class CSharpCompressorUnit
                             case "System.UIntPtr": AddIntrinsinc(IntrinsincElements.Type_UIntPtr, typeClass); goto ret_lbl;
                                 
                             case "System.Char": AddIntrinsinc(IntrinsincElements.Type_Char, typeClass); goto ret_lbl;
-                            case "System.String": AddIntrinsinc(IntrinsincElements.Type_String, typeClass); goto ret_lbl;
                             case "System.Boolean": AddIntrinsinc(IntrinsincElements.Type_Boolean, typeClass); goto ret_lbl;
+                            case "System.String": AddIntrinsinc(IntrinsincElements.Type_String, typeClass); forceStatic = true; break;
                                 
                             case "System.Single": AddIntrinsinc(IntrinsincElements.Type_Float, typeClass); goto ret_lbl;
                             case "System.Double": AddIntrinsinc(IntrinsincElements.Type_Double, typeClass); goto ret_lbl;
@@ -159,7 +167,7 @@ public partial class CSharpCompressorUnit
                             ret_lbl: return;
                         }
                         
-                        RealizerContainer ty = !typeClass.IsStatic
+                        RealizerContainer ty = !typeClass.IsStatic && !forceStatic
                             ? RealizerStructureBuilder.Create(typeClass.Name).Build()
                             : RealizerNamespaceBuilder.Create(typeClass.Name).Build();
                         
@@ -209,6 +217,7 @@ public partial class CSharpCompressorUnit
                     
                     default: throw new UnreachableException();
                 }
+                
             } break;
         
             case IPropertySymbol @property:
@@ -227,7 +236,56 @@ public partial class CSharpCompressorUnit
 
     private void ImplementInstrinsics()
     {
-        // TODO
+        var realizerModule = RealizerModuleBuilder
+            .Create("<RealizerIntrinsicsModule>")
+            .Build();
+        _program.AddModule(realizerModule);
+        
+        var objType = (RealizerStructure)SymbolsMap(IntrinsincsMap(IntrinsincElements.ClassObject))!;
+        var objTypeRef = new ReferenceTypeReference(new NodeTypeReference(objType));
+        
+        foreach (var (key, symbol) in _intrinsincsMap_1)
+        {
+            switch (key)
+            {
+                case IntrinsincElements.Function_IntrinsicGetObjectType:
+                {
+                    var instStructMeta = RealizerFunctionBuilder
+                        .Create(symbol.Name)
+                        .AsStatic()
+                        .WithParameter("object", objTypeRef)
+                        .WithReturnType(new ReferenceTypeReference(null!))
+                        .Build();
+                    
+                    var cell = instStructMeta.AddOmegaCodeCell("entry");
+                    cell.Writer.Ret(new Typeof(new Argument(instStructMeta.Parameters[0])));
+                    
+                    realizerModule.AddMember(instStructMeta);
+                    AddSymbol(symbol, instStructMeta);
+                } break;
+
+                case IntrinsincElements.Function_IntrinsicGetTypeFullName:
+                {
+                    
+                } break;
+
+                case IntrinsincElements.Function_IntrinsicGetObjectPointer:
+                {
+                    var instStructMeta = RealizerFunctionBuilder
+                        .Create(symbol.Name)
+                        .AsStatic()
+                        .WithParameter("object", objTypeRef)
+                        .WithReturnType(objTypeRef)
+                        .Build();
+
+                    var cell = instStructMeta.AddOmegaCodeCell("entry");
+                    cell.Writer.Ret(new Ref(new Argument(instStructMeta.Parameters[0])));
+                    
+                    realizerModule.AddMember(instStructMeta);
+                    AddSymbol(symbol, instStructMeta);
+                } break;
+            }
+        }
     }
     private void ProcessReferencesRecursive(RealizerMember parentBuilder)
     {
@@ -257,6 +315,7 @@ public partial class CSharpCompressorUnit
             case RealizerFunction f:
             {
                 var symbol = (IMethodSymbol)SymbolsMap(f);
+                if (_intrinsincsMap_2.ContainsKey(symbol)) goto skipall;
                 
                 f.ReturnType = TypeOf(symbol.ReturnType);
                 foreach (var i in symbol.Parameters)
@@ -323,6 +382,7 @@ public partial class CSharpCompressorUnit
     private ISymbol IntrinsincsMap(IntrinsincElements kind) => _intrinsincsMap_1[kind];
     private IntrinsincElements IntrinsincsMap(ISymbol symbol) => _intrinsincsMap_2[symbol];
     
+    
     private enum IntrinsincElements
     {
         ClassObject,
@@ -346,7 +406,8 @@ public partial class CSharpCompressorUnit
         Attribute_Export,
         Attribute_Import,
         
-        Function_IntrinsincGetVtable,
-        Function_IntrinsincGetFullName,
+        Function_IntrinsicGetObjectType,
+        Function_IntrinsicGetTypeFullName,
+        Function_IntrinsicGetObjectPointer,
     }
 }

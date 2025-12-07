@@ -48,6 +48,7 @@ public static class Builder
             Console.WriteLine("\nBuild Failed!");
             Environment.Exit(1);
         }
+        compiler.WipeSources();
         
         var realizerProgram = new RealizerProgram("placeholder");
         

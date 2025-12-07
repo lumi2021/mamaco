@@ -12,7 +12,7 @@ public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s,
     private List<IOmegaInstruction> _instructions = [];
     public IOmegaInstruction[] Instructions => [.. _instructions];
     public InstructionWriter Writer => new(this);
-
+    private ushort _nextReg = 0;
 
     public void OverrideInstructions(IOmegaInstruction[] instructions) => _instructions = [.. instructions];
     public override bool IsFinished() => _instructions.Count > 0 && _instructions[^1] is IOmegaBranch;
@@ -43,10 +43,12 @@ public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s,
         public IS Invalid() => AppendInstruction(new Invalid());
         
         public IS Assignment(IOmegaAssignable left, IOmegaExpression right) => AppendInstruction(new Assignment(left, right));
-        public IS Call(TypeReference? t, IOmegaCallable callable, params IOmegaExpression[] args) => AppendInstruction(new Call(t, callable, args));
+        public IS Call(IOmegaCallable callable, params IOmegaExpression[] args) => AppendInstruction(new Call(callable, args));
 
         public IS Ret(IOmegaExpression? value = null) => AppendInstruction(new Ret(value));
         public IS Throw(IOmegaExpression? value) => AppendInstruction(new Throw(value));
+
+        public Register GetNewRegister(TypeReference t) => new Register(t, _parentBuilder._nextReg++);
     }
     
 }
