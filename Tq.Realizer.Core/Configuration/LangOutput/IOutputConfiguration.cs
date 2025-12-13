@@ -25,6 +25,7 @@ public enum GenericAllowedFeatures
     PrimitivesOnStack = 1 << 1,
     StructuresOnStack = 1 << 2,
     
+    InitializeFieldsOnCall = 1 << 3,
 }
 
 [Flags]

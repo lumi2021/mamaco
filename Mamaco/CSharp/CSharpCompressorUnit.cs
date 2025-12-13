@@ -65,6 +65,7 @@ public partial class CSharpCompressorUnit
         }
     }
     
+    
     private void CompressMember(ISymbol csMember, RealizerContainer parent, StringBuilder namespaceBuilder)
     {
         var globalIdentifier = $"{namespaceBuilder}.{csMember.Name}";
@@ -106,17 +107,22 @@ public partial class CSharpCompressorUnit
                     case "System.Realizer.Intrinsics.RealizerGetStructFullName": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetTypeFullName, method); goto ret_lbl;
                     case "System.Realizer.Intrinsics.RealizerGetObjectPointer": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetObjectPointer, method); goto ret_lbl;
                         
-                    default:
-                        break; 
-                        
-                    ret_lbl:
-                        return;
+                    case "System.InteropServices.NativeMemory.AlignedAlloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedAlloc, method); goto ret_lbl;
+                    case "System.InteropServices.NativeMemory.AlignedFree": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedFree, method); goto ret_lbl;
+                    case "System.InteropServices.NativeMemory.AlignedRealloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedRealloc, method); goto ret_lbl;
+                    case "System.InteropServices.NativeMemory.Alloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlloc, method); goto ret_lbl;
+                    case "System.InteropServices.NativeMemory.Free": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryFree, method); goto ret_lbl;
+                    case "System.InteropServices.NativeMemory.Realloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryRealloc, method); goto ret_lbl;
+                    
+                    
+                    default: break; 
+                    ret_lbl: return;
                 }
                 
                 if (!method.DeclaringSyntaxReferences.Any()) return;
         
                 var mt = RealizerFunctionBuilder.Create(method.Name)
-                    .SetStatic(method.IsStatic || method.MethodKind == MethodKind.Constructor)
+                    .SetStatic(method.IsStatic)
                     .Build();
                 
                 parent.AddMember(mt);
@@ -208,10 +214,10 @@ public partial class CSharpCompressorUnit
                         }
 
                         var td = tdb.Build();
-                        td.AddMembers(functions);
-                        
                         parent.AddMember(td);
                         AddSymbol(typeClass, td);
+                        
+                        td.AddMembers(functions);
                         
                     } break;
                     
@@ -233,7 +239,6 @@ public partial class CSharpCompressorUnit
             default: throw new UnreachableException();
         }
     }
-
     private void ImplementInstrinsics()
     {
         var realizerModule = RealizerModuleBuilder
@@ -263,12 +268,10 @@ public partial class CSharpCompressorUnit
                     realizerModule.AddMember(instStructMeta);
                     AddSymbol(symbol, instStructMeta);
                 } break;
-
                 case IntrinsincElements.Function_IntrinsicGetTypeFullName:
                 {
                     
                 } break;
-
                 case IntrinsincElements.Function_IntrinsicGetObjectPointer:
                 {
                     var instStructMeta = RealizerFunctionBuilder
@@ -284,6 +287,105 @@ public partial class CSharpCompressorUnit
                     realizerModule.AddMember(instStructMeta);
                     AddSymbol(symbol, instStructMeta);
                 } break;
+
+                
+                case IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedAlloc:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithImportSymbol("env", "__aligned_alloc")
+                        
+                        .WithParameter("length", new IntegerTypeReference(false, 0))
+                        .WithParameter("alignment", new IntegerTypeReference(false, 0))
+                        
+                        .WithReturnType(ReferenceTypeReference.Opaque)
+                        
+                        .Build();
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
+                case IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedFree:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithImportSymbol("env", "__aligned_free")
+                        
+                        .WithParameter("ptr", ReferenceTypeReference.Opaque)
+                        
+                        .WithReturnType(null)
+                        
+                        .Build();
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
+                case IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedRealloc:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithImportSymbol("env", "__aligned_realloc")
+                        
+                        .WithParameter("ptr", ReferenceTypeReference.Opaque)
+                        .WithParameter("length", new IntegerTypeReference(false, 0))
+                        .WithParameter("alignment", new IntegerTypeReference(false, 0))
+                        
+                        .WithReturnType(ReferenceTypeReference.Opaque)
+                        
+                        .Build();
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
+                case IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlloc:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithImportSymbol("env", "__alloc")
+                        
+                        .WithParameter("length", new IntegerTypeReference(false, 0))
+                        
+                        .WithReturnType(ReferenceTypeReference.Opaque)
+                        
+                        .Build();
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
+                case IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryFree:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithImportSymbol("env", "__free")
+                        
+                        .WithParameter("ptr", ReferenceTypeReference.Opaque)
+                        
+                        .WithReturnType(null)
+                        
+                        .Build();
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
+                case IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryRealloc:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithImportSymbol("env", "__realloc")
+                        
+                        .WithParameter("ptr", ReferenceTypeReference.Opaque)
+                        .WithParameter("length", new IntegerTypeReference(false, 0))
+                        
+                        .WithReturnType(ReferenceTypeReference.Opaque)
+                        
+                        .Build();
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
+                
+                
+                //default: throw new NotImplementedException();
             }
         }
     }
@@ -409,5 +511,13 @@ public partial class CSharpCompressorUnit
         Function_IntrinsicGetObjectType,
         Function_IntrinsicGetTypeFullName,
         Function_IntrinsicGetObjectPointer,
+        
+        Function_RuntimeInteripServicesNativeMemoryAlignedAlloc,
+        Function_RuntimeInteripServicesNativeMemoryAlignedFree,
+        Function_RuntimeInteripServicesNativeMemoryAlignedRealloc,
+        
+        Function_RuntimeInteripServicesNativeMemoryAlloc,
+        Function_RuntimeInteripServicesNativeMemoryFree,
+        Function_RuntimeInteripServicesNativeMemoryRealloc,
     }
 }

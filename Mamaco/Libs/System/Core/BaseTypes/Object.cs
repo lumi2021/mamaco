@@ -11,5 +11,5 @@ public class Object
 
     
     public virtual bool Equals(object? obj) => Intrinsics.RealizerGetObjectPointer(this) == Intrinsics.RealizerGetObjectPointer(obj);
-    public virtual int GetHashCode() => (int)Intrinsics.RealizerGetObjectPointer(this);
+    public virtual int GetHashCode() => 0; //(int)Intrinsics.RealizerGetObjectPointer(this);
 }

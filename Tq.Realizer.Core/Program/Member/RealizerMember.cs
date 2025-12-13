@@ -6,6 +6,7 @@ public abstract class RealizerMember : IFormattable
 {
     internal RealizerContainer? _parent = null;
     
+    internal int _globalIndex = 0;
     public string Name { get; set; }
     public RealizerContainer? Parent => _parent;
     public string[] Global => _parent != null ? [.._parent.Global, Name] : [Name];
@@ -17,11 +18,10 @@ public abstract class RealizerMember : IFormattable
         RealizerNamespace namesp => namesp,
         _ => _parent.Namespace
     };
-    public RealizerModule? Module => _parent switch
+    public RealizerModule? Module => this switch
     {
-        null => null,
         RealizerModule module => module,
-        _ => _parent.Module
+        _ => _parent?.Module
     };
     
     public bool Static { get => GetStatic(); set => SetStatic(value); }

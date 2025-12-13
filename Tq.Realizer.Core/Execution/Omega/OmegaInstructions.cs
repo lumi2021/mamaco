@@ -37,6 +37,34 @@ public static class OmegaInstructions
     }
 
     // Values
+    public class Member(RealizerMember m) : IOmegaAssignable, IOmegaCallable
+    {
+        private readonly RealizerModule _nodeModule = m.Module ?? throw new ArgumentException("Member is not attached to a module!");
+        private readonly WeakReference<RealizerMember> _nodeWeakRef = new(m);
+        private readonly int _memberGlobalIndex = m._globalIndex;
+
+        public RealizerMember Node
+        {
+            get
+            {
+                if (_nodeWeakRef.TryGetTarget(out var target)) return target;
+                var node = _nodeModule.GetMemberByGlobalIndex(_memberGlobalIndex);
+                _nodeWeakRef.SetTarget(node);
+                return node;
+            }
+        }
+        
+        public TypeReference Type => Node switch
+        {
+            RealizerFunction @f => new CallableTypeReference(f),
+            RealizerField @f => f.Type!,
+            _ => throw new UnreachableException()
+        };
+        CallableTypeReference IOmegaCallable.Type => (CallableTypeReference)Type!;
+        
+        public override string ToString() => Node.ToString();
+    }
+    
     public class Register(TypeReference? type, u16 i) : IOmegaAssignable, IOmegaCallable
     {
         public TypeReference? Type => type;
@@ -53,19 +81,6 @@ public static class OmegaInstructions
         
         public readonly RealizerParameter Parameter = p;
         public override string ToString() => $"%{Parameter.Name}";
-    }
-    public class Member(RealizerMember m) : IOmegaAssignable, IOmegaCallable
-    {
-        public TypeReference Type => Node switch
-        {
-            RealizerFunction @f => new CallableTypeReference(f),
-            RealizerField @f => f.Type!,
-            _ => throw new UnreachableException()
-        };
-        CallableTypeReference IOmegaCallable.Type => (CallableTypeReference)Type!;
-        
-        public readonly RealizerMember Node = m;
-        public override string ToString() => Node.ToString();
     }
     public class Constant(RealizerConstantValue v) : IOmegaExpression
     {
@@ -121,8 +136,9 @@ public static class OmegaInstructions
     // Expressions
     public class Alloca(TypeReference type) : IOmegaExpression
     {
-        public TypeReference Type => new ReferenceTypeReference(type);
-        public override string ToString() => $"alloca {Type}";
+        public TypeReference Type => new ReferenceTypeReference(AllocaType);
+        public readonly TypeReference AllocaType = type;
+        public override string ToString() => $"alloca {AllocaType}";
     }
     public class Call(IOmegaCallable c, params IOmegaExpression[] args) : IOmegaExpression
     {
@@ -206,6 +222,18 @@ public static class OmegaInstructions
     }
 
 
+    // Misc
+    public class CallIntrinsic(IntrinsicFunctions func, params IOmegaExpression[] args) : IOmegaExpression
+    {
+        public TypeReference? Type => null;
+        public IntrinsicFunctions Function = func;
+        public readonly IOmegaExpression[] Arguments = args;
+
+        public override string ToString() => $"call {Function} ({string.Join(", ", Arguments)})";
+            
+    }
+    
+    
     public enum ComparissonOperation
     {
         Equal,
@@ -220,5 +248,10 @@ public static class OmegaInstructions
         UnsignedLessThanOrEqual,
         UnsignedGreaterThan,
         UnsignedGreaterThanOrEqual,
+    }
+    public enum IntrinsicFunctions : byte
+    {
+        initFields,
+        
     }
 }

@@ -7,7 +7,7 @@ public class RealizerParameter
     public readonly string Name;
     public readonly TypeReference Type;
 
-    internal RealizerParameter(string name, TypeReference type) => (Name, Type) = (name, type);
+    public RealizerParameter(string name, TypeReference type) => (Name, Type) = (name, type);
     
     public override string ToString() => $"{Type} {Name}";
 }

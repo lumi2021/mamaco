@@ -54,6 +54,14 @@ public class RealizerFunction: RealizerMember
         _executionBlocks.Add(cell);
         return cell;
     }
+    public OmegaCodeCell ReplaceOmegaCodeCell(OmegaCodeCell oldCell)
+    {
+        var newCell = new OmegaCodeCell(this, oldCell.Name, oldCell.Index);
+        _executionBlocks[(int)oldCell.Index] = newCell;
+        return newCell;
+    }
+    
+    
     protected override string ToFullDump()
     {
         var sb = new StringBuilder();

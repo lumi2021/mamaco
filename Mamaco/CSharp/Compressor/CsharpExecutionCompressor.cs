@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -40,9 +41,6 @@ public partial class CSharpCompressorUnit
         
                     for (var i = 0; i < methodSymbol.Parameters.Length; i++)
                         localsMap.Add(methodSymbol.Parameters[i], -i - 1);
-
-                    var instancet = TypeOf(methodSymbol.ReceiverType!);
-                    var instancep = func.AddParameter(".instance", instancet, 0);
                     
                     var s = node.GetSyntax();
                     switch (s)
@@ -55,6 +53,12 @@ public partial class CSharpCompressorUnit
 
                         case ConstructorDeclarationSyntax @constructorDec:
                         {
+                            if (constructorDec.Initializer == null ||
+                                constructorDec.Initializer.ThisOrBaseKeyword.Text == "base")
+                            {
+                                cell.Writer.IntrinsicCall(IntrinsicFunctions.initFields);
+                            }
+                            
                             if (constructorDec.Initializer != null)
                             {
                                 var baseRef = (RealizerFunction)SymbolsMap(RefOf(constructorDec.Initializer));
@@ -62,13 +66,12 @@ public partial class CSharpCompressorUnit
                                 List<IOmegaExpression> args = [];
                                 var baseargs = constructorDec.Initializer.ArgumentList.Arguments;
                                 
-                                args.Add(new Argument(instancep));
                                 args.AddRange(baseargs.Select((t, i) => ParseExpression(
-                                    t.Expression, ref cell, [],
-                                    expectedType: baseRef.Parameters[i].Type)));
+                                    t.Expression, ref cell, [], expectedType: baseRef.Parameters[i].Type)));
 
-                                cell.Writer.Call(new Member(baseRef), [.. args]);
+                                cell.Writer.Call(new Access(new Self(), new Member(baseRef)), [.. args]);
                             }
+                            
                         } break;
                         
                         default: throw new UnreachableException();
@@ -280,17 +283,26 @@ public partial class CSharpCompressorUnit
                 var objtype = new NodeTypeReference(objstruct);
                 var objsymbol = (ITypeSymbol)SymbolsMap(objstruct);
                 
-                if (objsymbol.IsValueType)
-                {
-                    var reg = cell.Writer.GetNewRegister(new ReferenceTypeReference(objtype));
-                    cell.Writer.Assignment(reg, new Alloca(objtype));
-                    cell.Writer.Call(new Member(constructor), [reg]);
-                    return new Val(reg);
-                }
+                var reg = cell.Writer.GetNewRegister(new ReferenceTypeReference(objtype));
+                    
+                if (objsymbol.IsValueType) cell.Writer.Assignment(reg, new Alloca(objtype));
                 else
                 {
-                    throw new NotImplementedException();
+                    var mem = new Call(
+                        new Member(SymbolsMap(IntrinsincsMap(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedAlloc))),
+                        [
+                            new Constant(new IntegerConstantValue(new IntegerTypeReference(false, 0), objtype.Length / 8)),
+                            new Constant(new IntegerConstantValue(new IntegerTypeReference(false, 0), objtype.Alignment / 8))
+                        ]);
+                    cell.Writer.Assignment(reg, mem);
                 }
+                
+                List<IOmegaExpression> argsList = [];
+                foreach (var e in obj.ArgumentList!.Arguments)
+                    argsList.Add(ParseExpression(e.Expression, ref cell, localsMap));
+                    
+                cell.Writer.Call(new Member(constructor), [reg, ..argsList]);
+                return objsymbol.IsValueType ? new Val(reg) : reg;
             }
         
             case MemberAccessExpressionSyntax memberAccess:

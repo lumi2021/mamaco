@@ -1,6 +1,5 @@
 using System.Text;
 using Tq.Realizeer.Core.Program.Builder;
-using Tq.Realizer.Core.Builder.Language.Omega;
 using Tq.Realizer.Core.Builder.References;
 using IS = Tq.Realizer.Core.Builder.Execution.Omega.OmegaCodeCell.InstructionWriter;
 using static Tq.Realizer.Core.Builder.Language.Omega.OmegaInstructions;
@@ -44,6 +43,7 @@ public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s,
         
         public IS Assignment(IOmegaAssignable left, IOmegaExpression right) => AppendInstruction(new Assignment(left, right));
         public IS Call(IOmegaCallable callable, params IOmegaExpression[] args) => AppendInstruction(new Call(callable, args));
+        public IS IntrinsicCall(IntrinsicFunctions func, params IOmegaExpression[] args) => AppendInstruction(new CallIntrinsic(func, args));
 
         public IS Ret(IOmegaExpression? value = null) => AppendInstruction(new Ret(value));
         public IS Throw(IOmegaExpression? value) => AppendInstruction(new Throw(value));

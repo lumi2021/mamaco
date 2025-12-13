@@ -12,13 +12,16 @@ public struct RealizerFunctionBuilder()
     private TypeReference? _returnType;
     private List<RealizerParameter> _parameters = [];
     
+    private string? _importSymbol = null;
+    private string? _importDomain = null;
+    private string? _exportSymbol = null;
     
     public static RealizerFunctionBuilder Create(string baseSymbol)
     {
         return new RealizerFunctionBuilder { _baseSymbol = baseSymbol };
     }
 
-    public RealizerFunctionBuilder WithReturnType(TypeReference typeref)
+    public RealizerFunctionBuilder WithReturnType(TypeReference? typeref)
     {
         _returnType = typeref;
         return this;
@@ -55,11 +58,31 @@ public struct RealizerFunctionBuilder()
         _parameters.AddRange(parameters);
         return this;
     }
-    
-    public RealizerFunction Build() => new(_baseSymbol, [.. _parameters])
+
+    public RealizerFunctionBuilder WithImportSymbol(string? domain, string? symbol)
     {
-        ReturnType = _returnType,
-        Static = _isStatic
-    };
+        _importSymbol = domain;
+        _importSymbol = symbol;
+        return this;
+    }
+    public RealizerFunctionBuilder WithExportSymbol(string? symbol)
+    {
+        _exportSymbol = symbol;
+        return this;
+    }
+
+    public RealizerFunction Build()
+    {
+        var f = new RealizerFunction(_baseSymbol, [.. _parameters])
+        {
+            ReturnType = _returnType,
+            Static = _isStatic,
+        };
+        
+        if (_importSymbol != null) f.Import(_importDomain, _importSymbol);
+        if (_exportSymbol != null) f.Export(_exportSymbol);
+        
+        return f;
+    }
 
 }

@@ -8,6 +8,30 @@ public class RealizerModule: RealizerContainer
 {
     internal RealizerModule(string name) : base(name) { }
     
+    private Dictionary<int, RealizerMember> _allMembersDictionary = [];
+    
+    
+    internal void RegisterMember(RealizerMember member)
+    {
+        var index = _allMembersDictionary.Count;
+        member._globalIndex = index+1;
+        _allMembersDictionary.Add(index, member);
+    }
+    internal void UnregisterMember(RealizerMember member)
+    {
+        _allMembersDictionary[member._globalIndex-1] = null!;
+        member._globalIndex = 0;
+    }
+    internal void ReplaceMemberRegistry(RealizerMember old, RealizerMember member)
+    {
+        var index = old._globalIndex;
+        _allMembersDictionary[index-1] = member;
+        member._globalIndex = index;
+        old._globalIndex = 0;
+    }
+    internal RealizerMember GetMemberByGlobalIndex(int globalIndex) => _allMembersDictionary[globalIndex-1];
+    
+    
     protected override bool GetStatic() => true;
     protected override string ToFullDump()
     {

@@ -3,7 +3,7 @@
 
 module @TestCode {
 	struct @Program : @System.Object {
-		func @.ctor(*@TestCode.Program .instance) void {	
+		func @.ctor() void {	
 			entry:
 				ret
 			
@@ -27,7 +27,7 @@ module @TestCode {
 	}
 
 	struct @Test : @System.Object {
-		func @.ctor(*@TestCode.Test .instance) void {	
+		func @.ctor() void {	
 			entry:
 				ret
 			
@@ -35,7 +35,7 @@ module @TestCode {
 	}
 
 	struct @Driving : @System.Object {
-		func @.ctor(*@TestCode.Driving .instance) void {	
+		func @.ctor() void {	
 			entry:
 				ret
 			
@@ -67,15 +67,16 @@ module @System {
 		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 1
 		field *@System.Exception @_innerException
 	
-		func @.ctor(*@System.Exception .instance, []u8 message) void {	
+		func @.ctor([]u8 message) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, (*@System.Exception null))
+				call void self->@System.Exception..ctor(%message, (*@System.Exception null))
 				ret
 			
 		}
 	
-		func @.ctor(*@System.Exception .instance, []u8 message, *@System.Exception innerException) void {	
+		func @.ctor([]u8 message, *@System.Exception innerException) void {	
 			entry:
+				call initFields ()
 				self->@System.Exception._message = %message
 				self->@System.Exception._innerException = %innerException
 				ret
@@ -128,23 +129,26 @@ module @System {
 	}
 
 	struct @UnreachableException : @System.Exception {
-		func @.ctor(*@System.UnreachableException .instance) void {	
+		func @.ctor() void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+				call initFields ()
+				call void self->@System.Exception..ctor(([]u8 null), (*@System.Exception null))
 				ret
 			
 		}
 	
-		func @.ctor(*@System.UnreachableException .instance, []u8 message) void {	
+		func @.ctor([]u8 message) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+				call initFields ()
+				call void self->@System.Exception..ctor(%message, (*@System.Exception null))
 				ret
 			
 		}
 	
-		func @.ctor(*@System.UnreachableException .instance, []u8 message, *@System.Exception innerException) void {	
+		func @.ctor([]u8 message, *@System.Exception innerException) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, %innerException)
+				call initFields ()
+				call void self->@System.Exception..ctor(%message, %innerException)
 				ret
 			
 		}
@@ -157,23 +161,26 @@ module @System {
 	}
 
 	struct @ArgumentException : @System.Exception {
-		func @.ctor(*@System.ArgumentException .instance) void {	
+		func @.ctor() void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+				call initFields ()
+				call void self->@System.Exception..ctor(([]u8 null), (*@System.Exception null))
 				ret
 			
 		}
 	
-		func @.ctor(*@System.ArgumentException .instance, []u8 message) void {	
+		func @.ctor([]u8 message) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+				call initFields ()
+				call void self->@System.Exception..ctor(%message, (*@System.Exception null))
 				ret
 			
 		}
 	
-		func @.ctor(*@System.ArgumentException .instance, []u8 message, *@System.Exception innerException) void {	
+		func @.ctor([]u8 message, *@System.Exception innerException) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, %innerException)
+				call initFields ()
+				call void self->@System.Exception..ctor(%message, %innerException)
 				ret
 			
 		}
@@ -186,23 +193,26 @@ module @System {
 	}
 
 	struct @OutOfMemoryException : @System.Exception {
-		func @.ctor(*@System.OutOfMemoryException .instance) void {	
+		func @.ctor() void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+				call initFields ()
+				call void self->@System.Exception..ctor(([]u8 null), (*@System.Exception null))
 				ret
 			
 		}
 	
-		func @.ctor(*@System.OutOfMemoryException .instance, []u8 message) void {	
+		func @.ctor([]u8 message) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+				call initFields ()
+				call void self->@System.Exception..ctor(%message, (*@System.Exception null))
 				ret
 			
 		}
 	
-		func @.ctor(*@System.OutOfMemoryException .instance, []u8 message, *@System.Exception innerException) void {	
+		func @.ctor([]u8 message, *@System.Exception innerException) void {	
 			entry:
-				call void @System.Exception..ctor(%.instance, %message, %innerException)
+				call initFields ()
+				call void self->@System.Exception..ctor(%message, %innerException)
 				ret
 			
 		}
@@ -214,6 +224,10 @@ module @System {
 		}
 	}
 
+	namespace @InteropServices {
+		namespace @NativeMemory {}
+	}
+
 	namespace @Runtime {
 		namespace @CompilerServices {
 			struct @IsExternalInit : @System.Object {}
@@ -221,8 +235,9 @@ module @System {
 	}
 
 	struct @FlagsAttribute : @System.Attribute {
-		func @.ctor(*@System.FlagsAttribute .instance) void {	
+		func @.ctor() void {	
 			entry:
+				call initFields ()
 				ret
 			
 		}
@@ -248,7 +263,7 @@ module @System {
 	}
 
 	struct @AttributeUsageAttribute : @System.Attribute {
-		func @.ctor(*@System.AttributeUsageAttribute .instance, @System.AttributeTargets validOn) void {	
+		func @.ctor(@System.AttributeTargets validOn) void {	
 			entry:
 				ret
 			
@@ -311,23 +326,26 @@ module @System {
 
 	namespace @Diagnostics {
 		struct @UnreachableException : @System.Exception {
-			func @.ctor(*@System.Diagnostics.UnreachableException .instance) void {	
+			func @.ctor() void {	
 				entry:
-					call void @System.Exception..ctor(%.instance, (*@System.Exception null), ([]u8 null))
+					call initFields ()
+					call void self->@System.Exception..ctor(([]u8 null), (*@System.Exception null))
 					ret
 				
 			}
 		
-			func @.ctor(*@System.Diagnostics.UnreachableException .instance, []u8 message) void {	
+			func @.ctor([]u8 message) void {	
 				entry:
-					call void @System.Exception..ctor(%.instance, %message, ([]u8 null))
+					call initFields ()
+					call void self->@System.Exception..ctor(%message, (*@System.Exception null))
 					ret
 				
 			}
 		
-			func @.ctor(*@System.Diagnostics.UnreachableException .instance, []u8 message, *@System.Exception innerException) void {	
+			func @.ctor([]u8 message, *@System.Exception innerException) void {	
 				entry:
-					call void @System.Exception..ctor(%.instance, %message, %innerException)
+					call initFields ()
+					call void self->@System.Exception..ctor(%message, %innerException)
 					ret
 				
 			}
@@ -338,7 +356,7 @@ module @System {
 
 	struct @ValueType : @System.Object {}
 
-	struct @Type : @System.ValueType {
+	struct @Type : @System.Object {
 		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 1
 		field *opaque @metadataPtr
 	
@@ -358,8 +376,9 @@ module @System {
 			
 		}
 	
-		func @.ctor(@System.Type .instance, *opaque metadataPtr) void {	
+		func @.ctor(*opaque metadataPtr) void {	
 			entry:
+				call initFields ()
 				self->@System.Type.metadataPtr = %metadataPtr
 				ret
 			
@@ -379,17 +398,17 @@ module @System {
 	struct @Delegate : @System.Object {}
 
 	struct @Object {
-		func @GetType() @System.Type {	
+		func @GetType() *@System.Type {	
 			entry:
-				*@System.Type %0 = alloca *@System.Type
-				call void @System.Type..ctor(*@System.Type %0)
-				ret val *@System.Type %0
+				*@System.Type %0 = call *opaque @<RealizerIntrinsicsModule>.AlignedAlloc((uptr 0), (uptr 0))
+				call void @System.Type..ctor(*@System.Type %0, call *opaque @<RealizerIntrinsicsModule>.RealizerGetStructMetadataPointer(self))
+				ret *@System.Type %0
 			
 		}
 	
 		func @ToString() []u8 {	
 			entry:
-				ret call @System.Type self->@System.Object.GetType()->@System.Type.FullName
+				ret call *@System.Type self->@System.Object.GetType()->@System.Type.FullName
 			
 		}
 	
@@ -401,7 +420,7 @@ module @System {
 	
 		func @GetHashCode() i32 {	
 			entry:
-				ret call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(self) as i32
+				ret (i32 0)
 			
 		}
 	}
@@ -419,6 +438,18 @@ module @System {
 	}
 }
 module @<RealizerIntrinsicsModule> {
+	import "" "__aligned_alloc" func @AlignedAlloc(uptr length, uptr alignment) *opaque {}
+
+	import "" "__aligned_free" func @AlignedFree(*opaque ptr) void {}
+
+	import "" "__aligned_realloc" func @AlignedRealloc(*opaque ptr, uptr length, uptr alignment) *opaque {}
+
+	import "" "__alloc" func @Alloc(uptr length) *opaque {}
+
+	import "" "__free" func @Free(*opaque ptr) void {}
+
+	import "" "__realloc" func @Realloc(*opaque ptr, uptr length) *opaque {}
+
 	func @RealizerGetStructMetadataPointer(*@System.Object object) *opaque {	
 		entry:
 			ret typeof %object
