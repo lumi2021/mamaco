@@ -17,6 +17,8 @@ module @TestCode {
 	
 		export "_start" func @Main() void {	
 			entry:
+				call void @System.Console.WriteLine("Hello, World!")
+				call void @System.Console.WriteLine(@TestCode.Program.TestField)
 				@TestCode.Program.TestField = u64 add (u64 5), (u64 10)
 				@TestCode.Program.TestField = u64 mul @TestCode.Program.TestField, (u64 10)
 				@TestCode.Program.TestFieldShort = (i16 5)
@@ -91,6 +93,8 @@ module @System {
 	}
 
 	namespace @Console {
+		import "" "__write" func @__write(iptr fd, []u8 content) void {}
+	
 		func @Write([]u8 content) void {	
 			entry:
 				ret

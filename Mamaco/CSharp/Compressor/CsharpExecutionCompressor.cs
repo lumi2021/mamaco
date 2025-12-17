@@ -118,7 +118,8 @@ public partial class CSharpCompressorUnit
                         else
                         {
                             var x = ParseExpression((ExpressionSyntax)body, ref cell, localsMap);
-                            if (x != null!) cell.Writer.Ret(x);
+                            if (methodSymbol.ReturnsVoid) cell.Writer.Ret();
+                            else cell.Writer.Ret(x);
                         }
                     
                         if (!cell.IsFinished()) cell.Writer.Ret();
@@ -220,7 +221,8 @@ public partial class CSharpCompressorUnit
                 return;
             
             case ExpressionStatementSyntax exp:
-                ParseExpression(exp.Expression, ref cell, localsMap);
+                ParseExpression(exp.Expression, ref cell, localsMap,
+                    asStatement: true);
                 return;
             
             default: throw new UnreachableException();
@@ -232,6 +234,7 @@ public partial class CSharpCompressorUnit
         ref OmegaCodeCell cell,
         Dictionary<ISymbol, int> localsMap,
         
+        bool asStatement = false,
         TypeReference? expectedType = null,
         bool instanceRelative = false)
     {
@@ -259,7 +262,7 @@ public partial class CSharpCompressorUnit
                 foreach (var i in args)
                     argsList.Add(ParseExpression(i.Expression, ref cell, localsMap));
 
-                if (fRetType == null)
+                if (asStatement)
                 {
                     cell.Writer.Call((IOmegaCallable)callee, [.. argsList]);
                     return null!;

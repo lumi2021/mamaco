@@ -9,7 +9,9 @@ public class Program() {
 
     public static void Main()
     {
+        Console.WriteLine("Hello, World!");
         Console.WriteLine(TestField);
+        
         TestField = 5 + 10;
         TestField *= 10;
         //Console.WriteLine(TestField);
