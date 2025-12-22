@@ -1,10 +1,12 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Tq.Realizeer.Core.Program.Builder;
 using Tq.Realizeer.Core.Program.Member;
+using Tq.Realizer.Core.Builder.Execution;
 using Tq.Realizer.Core.Builder.Execution.Omega;
 using Tq.Realizer.Core.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
@@ -26,6 +28,12 @@ public partial class CSharpCompressorUnit
             switch (symbol)
             {
                 case INamespaceOrTypeSymbol: continue;
+                
+                case IMethodSymbol { IsExtern: true } methodSymbol:
+                {
+                    var func = (RealizerFunction)builder;
+                    func.Import(methodSymbol.Name);
+                } break;
                 
                 case IMethodSymbol { MethodKind: MethodKind.Constructor } methodSymbol:
                 {
@@ -85,12 +93,6 @@ public partial class CSharpCompressorUnit
                     }
                     
                     if (!cell.IsFinished()) cell.Writer.Ret();
-                } break;
-
-                case IMethodSymbol { IsExtern: true } methodSymbol:
-                {
-                    var func = (RealizerFunction)builder;
-                    func.Import(methodSymbol.Name);
                 } break;
                 
                 case IMethodSymbol methodSymbol:
@@ -210,6 +212,26 @@ public partial class CSharpCompressorUnit
                 cell.Writer.Ret(ret.Expression == null ? null 
                     : ParseExpression(ret.Expression, ref cell, localsMap));
                 return;
+
+            case WhileStatementSyntax whileStatement:
+            {
+                var function = cell.Source;
+                var condition = function.AddOmegaCodeCell("while.condition");
+                var execution = function.AddOmegaCodeCell("while.execution");
+                var brk = function.AddOmegaCodeCell("while.break");
+
+                cell.Writer.Branch(condition);
+                ref var curCell = ref condition;
+                
+                var conditionExpression = ParseExpression(whileStatement.Condition, ref curCell, localsMap);
+                condition.Writer.CBranch(conditionExpression, execution, brk);
+
+                curCell = ref execution;
+                ParseStatement(whileStatement.Statement, ref curCell, localsMap);
+                execution.Writer.Branch(condition);
+                
+                cell = brk;
+            } return;
             
             case ExpressionStatementSyntax exp:
                 ParseExpression(exp.Expression, ref cell, localsMap,
@@ -270,6 +292,16 @@ public partial class CSharpCompressorUnit
                 throw new NotImplementedException();
             case ObjectCreationExpressionSyntax @obj:
             {
+                var aaaa = RefOf(obj);
+                if (_intrinsincsMap_2.TryGetValue(RefOf(obj), out var intrinsinc))
+                { 
+                    List<IOmegaExpression> args = [];
+                    foreach(var i in obj.ArgumentList.Arguments)
+                       args.Add(ParseExpression(i.Expression, ref cell, localsMap));
+                   
+                    return new Call(new Member((RealizerFunction)SymbolsMap(RefOf(obj))), [..args]);
+                }
+                
                 var constructor = (RealizerFunction)SymbolsMap(RefOf(obj));
                 var objstruct = (RealizerStructure)constructor.Parent!;
                 var objtype = new NodeTypeReference(objstruct);
@@ -281,7 +313,7 @@ public partial class CSharpCompressorUnit
                 else
                 {
                     var mem = new Call(
-                        new Member(SymbolsMap(IntrinsincsMap(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedAlloc))),
+                        new Member(SymbolsMap(IntrinsincsMap(IntrinsincElements.Function_RuntimeInteropServicesNativeMemoryAlignedAlloc))),
                         [
                             new Constant(new IntegerConstantValue(new IntegerTypeReference(false, 0), objtype.Length / 8)),
                             new Constant(new IntegerConstantValue(new IntegerTypeReference(false, 0), objtype.Alignment / 8))
@@ -381,12 +413,34 @@ public partial class CSharpCompressorUnit
                         return new PtrFromInt(r, expression);
                     
                     case ReferenceTypeReference @r when sourceType is ReferenceTypeReference:
-                        throw new NotImplementedException();
+                        return new PtrTypeCast(r, expression);
                     
                     default: throw new InvalidOperationException();
                 }
             }
 
+            case ElementAccessExpressionSyntax element:
+            {
+                var array = ParseExpression(element.Expression, ref cell, localsMap);
+                var index = ParseExpression(element.ArgumentList.Arguments[0].Expression, ref cell, localsMap);
+                return new Indexer(array, index);
+            }
+
+            case PostfixUnaryExpressionSyntax postfixUnary:
+            {
+                var value = ParseExpression(postfixUnary.Operand, ref cell, localsMap);
+                var operation = postfixUnary.OperatorToken.Text switch
+                {
+                    "++" => new Add(value.Type!, value,
+                        new Constant(new IntegerConstantValue((IntegerTypeReference)value.Type!, 1))),
+                    _ => throw new UnreachableException()
+                };
+
+                cell.Writer.Assignment((IOmegaAssignable)value, operation);
+
+                return value;
+            }
+                
             default: throw new UnreachableException();
         }
     }
@@ -462,9 +516,11 @@ public partial class CSharpCompressorUnit
             "+" => new Add(t, expl, expr),
             "*" => new Mul(t, expl, expr),
                     
-            "==" => new Cmp(ComparissonOperation.Equal, expl, expr),
-            "!=" => new Cmp(ComparissonOperation.NotEqual, expl, expr),
-                    
+            "==" => new Cmp(ComparisonOperation.Equal, expl, expr),
+            "!=" => new Cmp(ComparisonOperation.NotEqual, expl, expr),
+            "<" => new Cmp(ComparisonOperation.UnsignedLessThan, expl, expr),
+            ">" => new Cmp(ComparisonOperation.UnsignedGreaterThan, expl, expr),
+            
             _ => throw new UnreachableException()
         };
     }
@@ -549,6 +605,7 @@ public partial class CSharpCompressorUnit
             case "System.Void": return null!;
             case "System.Boolean": return new IntegerTypeReference(false, 1);
             
+            case "System.Char":
             case "System.Byte": return new IntegerTypeReference(false, 8);
             case "System.SByte": return new IntegerTypeReference(true, 8);
             case "System.Int16": return new IntegerTypeReference(true, 16);

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using Tq.Realizeer.Core.Program.Builder;
 using Tq.Realizeer.Core.Program.Member;
+using Tq.Realizer.Core.Builder.Execution;
 using Tq.Realizer.Core.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
 using u16 = ushort;
@@ -42,7 +43,7 @@ public static class OmegaInstructions
         private readonly RealizerModule _nodeModule = m.Module ?? throw new ArgumentException("Member is not attached to a module!");
         private readonly WeakReference<RealizerMember> _nodeWeakRef = new(m);
         private readonly int _memberGlobalIndex = m._globalIndex;
-
+        
         public RealizerMember Node
         {
             get
@@ -124,7 +125,6 @@ public static class OmegaInstructions
         public readonly IOmegaExpression Expression = exp;
         public override string ToString() => $"typeof {Expression}";
     }
-
     public class LenOf(IOmegaExpression exp) : IOmegaExpression
     {
         public TypeReference? Type => IntegerTypeReference.NUInt;
@@ -148,6 +148,17 @@ public static class OmegaInstructions
         public readonly TypeReference AllocaType = type;
         public override string ToString() => $"alloca {AllocaType}";
     }
+    public class Slice(TypeReference elmType, IOmegaExpression ptr, IOmegaExpression len): IOmegaExpression
+    {
+        public TypeReference Type => new SliceTypeReference(ElementType);
+        public readonly TypeReference ElementType = elmType;
+
+        public IOmegaExpression Pointer = ptr.Type is ReferenceTypeReference ? ptr : throw new ArgumentException();
+        public IOmegaExpression Lenght = len;
+        
+        public override string ToString() => $"{Pointer}[..{Lenght}]";
+    } 
+        
     public class Call(IOmegaCallable c, params IOmegaExpression[] args) : IOmegaExpression
     {
         public TypeReference? Type => Callable.Type.ReturnType;
@@ -181,12 +192,21 @@ public static class OmegaInstructions
         public override string ToString() => $"{Type} mul {Left}, {Right}";
     }
 
-    public class Cmp(ComparissonOperation op, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
+    public class Indexer(IOmegaExpression slice, IOmegaExpression index) : IOmegaExpression, IOmegaAssignable
+    {
+        public TypeReference? Type => ((SliceTypeReference)slice.Type!).Subtype;
+        public readonly IOmegaExpression Slice = slice;
+        public readonly IOmegaExpression Index = index;
+        
+        public override string ToString() => $"{Slice}[{Index}]";
+    }
+    
+    public class Cmp(ComparisonOperation op, IOmegaExpression l, IOmegaExpression r) : IOmegaExpression
     {
         public TypeReference? Type => new IntegerTypeReference(false, 1);
         public readonly IOmegaExpression Left = l;
         public readonly IOmegaExpression Right = r;
-        public readonly ComparissonOperation Op = op;
+        public readonly ComparisonOperation Op = op;
 
         public override string ToString() => $"cmp {Op} {Left}, {Right}";
     }
@@ -195,6 +215,14 @@ public static class OmegaInstructions
     {
         public TypeReference? Type => toType;
         public readonly IOmegaExpression Exp = exp.Type is IntegerTypeReference
+            ? exp : throw new ArgumentException();
+
+        public override string ToString() => $"{Exp} as {Type}";
+    }
+    public class PtrTypeCast(ReferenceTypeReference toType, IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => toType;
+        public readonly IOmegaExpression Exp = exp.Type is ReferenceTypeReference
             ? exp : throw new ArgumentException();
 
         public override string ToString() => $"{Exp} as {Type}";
@@ -228,7 +256,36 @@ public static class OmegaInstructions
         public readonly IOmegaExpression Fault = fault;
         public override string ToString() => $"throw {Fault}";
     }
+    public class Branch: IOmegaBranch
+    {
+        public readonly uint Cell;
 
+        public Branch(CodeCell cell) => Cell = cell.Index;
+        public Branch(uint cellIndex) => Cell = cellIndex;
+        
+        public override string ToString() => $"branch {Cell}";
+    }
+    public class CBranch : IOmegaBranch
+    {
+        public readonly IOmegaExpression Expression;
+        public readonly uint IfTrue;
+        public readonly uint IfFalse;
+
+        public CBranch(IOmegaExpression expression, CodeCell iftrue, CodeCell iffalse)
+        {
+            Expression = expression ?? throw new ArgumentNullException(nameof(expression));
+            IfTrue = iftrue.Index;
+            IfFalse = iffalse.Index;
+        }
+        public CBranch(IOmegaExpression expression, uint iftrue, uint iffalse)
+        {
+            Expression = expression ?? throw new ArgumentNullException(nameof(expression));
+            IfTrue = iftrue;
+            IfFalse = iffalse;
+        }
+        
+        public override string ToString() => $"cbranch {Expression}, {IfTrue}, {IfFalse}";
+    }
 
     // Misc
     public class CallIntrinsic(IntrinsicFunctions func, params IOmegaExpression[] args) : IOmegaExpression
@@ -242,7 +299,7 @@ public static class OmegaInstructions
     }
     
     
-    public enum ComparissonOperation
+    public enum ComparisonOperation
     {
         Equal,
         NotEqual,

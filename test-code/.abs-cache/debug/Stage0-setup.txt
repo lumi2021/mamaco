@@ -262,6 +262,17 @@ module @System {
 		}
 	}
 
+	namespace @Reflection {
+		struct @DefaultMemberAttribute : @System.Attribute {
+			func @.ctor([]u8 memberName) void {	
+				entry:
+					call initFields ()
+					ret
+				
+			}
+		}
+	}
+
 	namespace @Runtime {
 		namespace @CompilerServices {
 			struct @IsExternalInit : @System.Object {}
@@ -345,16 +356,44 @@ module @System {
 
 	struct @ValueType : @System.Object {}
 
-	struct @Reflection : @System.Object {}
-
 	namespace @String {
 		property i32 @Length { get = @<RealizerIntrinsicsModule>.get_Length }
+	
+		property u8 @this[] { get = @<RealizerIntrinsicsModule>.get_Item }
 	
 		func @Concat([]u8 str0, []u8 str1) []u8 {	
 			entry:
 				i32 %0 =  add %str0->@System.String.Length, %str1->@System.String.Length
-				*opaque %1 = call *opaque @<RealizerIntrinsicsModule>.AlignedAlloc(i32 %0, (i32 1))
-				ret "todo\0a"
+				*opaque %1 = call *opaque @<RealizerIntrinsicsModule>.AlignedAlloc(i32 %0, (i32 1)) as *opaque
+				i32 %2 = (i32 0)
+				i32 %3 = (i32 0)
+				branch 1
+				
+			while.condition:
+				cbranch cmp UnsignedLessThan i32 %2, %str0->@System.String.Length, 2, 3
+				
+			while.execution:
+				i32 %2 = i32 add i32 %2, (i32 1)
+				i32 %3 = i32 add i32 %3, (i32 1)
+				*opaque %1[i32 %2] = %str0[i32 %3]
+				branch 1
+				
+			while.break:
+				i32 %3 = (i32 0)
+				branch 4
+				
+			while.condition:
+				cbranch cmp UnsignedLessThan i32 %2, %str1->@System.String.Length, 5, 6
+				
+			while.execution:
+				i32 %2 = i32 add i32 %2, (i32 1)
+				i32 %3 = i32 add i32 %3, (i32 1)
+				*opaque %1[i32 %2] = %str1[i32 %3]
+				branch 4
+				
+			while.break:
+				[]u8 %4 = call []u8 @<RealizerIntrinsicsModule>.String..ctor(*opaque %1, i32 %0)
+				ret []u8 %4
 			
 		}
 	}
@@ -502,9 +541,27 @@ module @<RealizerIntrinsicsModule> {
 		
 	}
 
+	func @op_Implicit(*opaque ptr) uptr {	
+		entry:
+			ret %ptr as uptr
+		
+	}
+
 	func @get_Length([]u8 str) i32 {	
 		entry:
 			ret lenof %str as i32
+		
+	}
+
+	func @String..ctor(*opaque ptr, uptr length) []u8 {	
+		entry:
+			ret %ptr[..%length]
+		
+	}
+
+	func @get_Item([]u8 str, i32 index) u8 {	
+		entry:
+			ret %str[%index]
 		
 	}
 

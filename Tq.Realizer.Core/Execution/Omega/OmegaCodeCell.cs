@@ -47,7 +47,13 @@ public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s,
 
         public IS Ret(IOmegaExpression? value = null) => AppendInstruction(new Ret(value));
         public IS Throw(IOmegaExpression? value) => AppendInstruction(new Throw(value));
-
+        public IS Branch(CodeCell block) => AppendInstruction(new Branch(block));
+        public IS Branch(uint blockindex) => AppendInstruction(new Branch(blockindex));
+        public IS CBranch(IOmegaExpression condition, CodeCell iftrue, CodeCell iffalse)
+            => AppendInstruction(new CBranch(condition, iftrue, iffalse));
+        public IS CBranch(IOmegaExpression condition, uint iftrue, uint iffalse)
+            => AppendInstruction(new CBranch(condition, iftrue, iffalse));
+        
         public Register GetNewRegister(TypeReference t) => new Register(t, _parentBuilder._nextReg++);
     }
     
