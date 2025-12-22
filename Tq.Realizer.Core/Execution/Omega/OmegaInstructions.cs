@@ -93,8 +93,8 @@ public static class OmegaInstructions
         public TypeReference? Type => Right.Type;
         CallableTypeReference IOmegaCallable.Type => (CallableTypeReference)Type!;
         
-        public readonly IOmegaExpression Left = l;
-        public readonly Member Right = r;
+        public readonly IOmegaExpression Left = l ?? throw new UnreachableException();
+        public readonly Member Right = r ?? throw new UnreachableException();
         public override string ToString() => $"{Left}->{Right}";
     }
     public class Self() : IOmegaExpression
@@ -125,6 +125,14 @@ public static class OmegaInstructions
         public override string ToString() => $"typeof {Expression}";
     }
 
+    public class LenOf(IOmegaExpression exp) : IOmegaExpression
+    {
+        public TypeReference? Type => IntegerTypeReference.NUInt;
+        public readonly IOmegaExpression Expression = exp.Type is SliceTypeReference
+            ? exp : throw new ArgumentException();
+        public override string ToString() => $"lenof {Expression}";
+}
+    
     // Statemets
     public class Assignment(IOmegaAssignable l, IOmegaExpression r) : IOmegaInstruction
     {

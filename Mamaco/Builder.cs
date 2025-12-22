@@ -28,6 +28,10 @@ public static class Builder
         var compiler = new CSharpCompilerUnit();
         var compressor = new CSharpCompressorUnit();
 
+        //compiler.AddImplicitGlobalNamespaces([
+        //    "System",
+        //]);
+        
         foreach (var (i1, i2) in sources) compiler.Parse(i1, i2);
         compiler.Compile();
 
@@ -86,6 +90,7 @@ public static class Builder
         srcList.AddRange(libsSrc.Select( e => (File.ReadAllText(e), e)));
     }
 
+    
     private static void LoadModules()
     {
         RealizerModules.ManualLoad(Path.Combine(AppContext.BaseDirectory, "Tq.Module.LLVM.dll"));

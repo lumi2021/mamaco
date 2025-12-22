@@ -101,26 +101,38 @@ public partial class CSharpCompressorUnit
             
             case IMethodSymbol @method:
             {
+                
                 switch (globalIdentifier)
                 {
                     case "System.Realizer.Intrinsics.RealizerGetStructMetadataPointer": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetObjectType, method); goto ret_lbl;
                     case "System.Realizer.Intrinsics.RealizerGetStructFullName": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetTypeFullName, method); goto ret_lbl;
                     case "System.Realizer.Intrinsics.RealizerGetObjectPointer": AddIntrinsinc(IntrinsincElements.Function_IntrinsicGetObjectPointer, method); goto ret_lbl;
                         
-                    case "System.InteropServices.NativeMemory.AlignedAlloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedAlloc, method); goto ret_lbl;
-                    case "System.InteropServices.NativeMemory.AlignedFree": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedFree, method); goto ret_lbl;
-                    case "System.InteropServices.NativeMemory.AlignedRealloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedRealloc, method); goto ret_lbl;
-                    case "System.InteropServices.NativeMemory.Alloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlloc, method); goto ret_lbl;
-                    case "System.InteropServices.NativeMemory.Free": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryFree, method); goto ret_lbl;
-                    case "System.InteropServices.NativeMemory.Realloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryRealloc, method); goto ret_lbl;
-                    
-                    
+                    case "System.Runtime.InteropServices.NativeMemory.AlignedAlloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedAlloc, method); goto ret_lbl;
+                    case "System.Runtime.InteropServices.NativeMemory.AlignedFree": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedFree, method); goto ret_lbl;
+                    case "System.Runtime.InteropServices.NativeMemory.AlignedRealloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedRealloc, method); goto ret_lbl;
+                    case "System.Runtime.InteropServices.NativeMemory.Alloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlloc, method); goto ret_lbl;
+                    case "System.Runtime.InteropServices.NativeMemory.Free": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryFree, method); goto ret_lbl;
+                    case "System.Runtime.InteropServices.NativeMemory.Realloc": AddIntrinsinc(IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryRealloc, method); goto ret_lbl;
+                        
+                    case "System.String.get_Length": AddIntrinsinc(IntrinsincElements.Function_GetStringLength, method); goto ret_lbl;
+
+                    case "System.UIntPtr.op_Implicit":
+                    {
+                        if (method.ReturnType.Name == "UIntPtr")
+                            switch (method.Parameters[0].Type.Name)
+                            {
+                                case "Int32": AddIntrinsinc(IntrinsincElements.Operator_ImplicitInt32_2_UIntPtr, method); break;
+                                default: throw new NotImplementedException();
+                            }
+                    } goto ret_lbl;
+                        
                     default: break; 
                     ret_lbl: return;
                 }
                 
                 if (!method.DeclaringSyntaxReferences.Any()) return;
-        
+                
                 var mt = RealizerFunctionBuilder.Create(method.Name)
                     .SetStatic(method.IsStatic)
                     .Build();
@@ -158,8 +170,8 @@ public partial class CSharpCompressorUnit
                             case "System.UInt64": AddIntrinsinc(IntrinsincElements.Type_UInt64, typeClass); goto ret_lbl;
                             case "System.Int128": AddIntrinsinc(IntrinsincElements.Type_Int128, typeClass); goto ret_lbl;
                             case "System.UInt128": AddIntrinsinc(IntrinsincElements.Type_UInt128, typeClass); goto ret_lbl;
-                            case "System.IntPtr": AddIntrinsinc(IntrinsincElements.Type_IntPtr, typeClass); goto ret_lbl;
-                            case "System.UIntPtr": AddIntrinsinc(IntrinsincElements.Type_UIntPtr, typeClass); goto ret_lbl;
+                            case "System.IntPtr": AddIntrinsinc(IntrinsincElements.Type_IntPtr, typeClass); break;
+                            case "System.UIntPtr": AddIntrinsinc(IntrinsincElements.Type_UIntPtr, typeClass); break;
                                 
                             case "System.Char": AddIntrinsinc(IntrinsincElements.Type_Char, typeClass); goto ret_lbl;
                             case "System.Boolean": AddIntrinsinc(IntrinsincElements.Type_Boolean, typeClass); goto ret_lbl;
@@ -228,13 +240,22 @@ public partial class CSharpCompressorUnit
         
             case IPropertySymbol @property:
             {
+
+                switch (globalIdentifier)
+                {
+                    case "System.String.Length": AddIntrinsinc(IntrinsincElements.Property_StringLength, property); break;
+                }
+                
                 var prop = RealizerPropertyBuilder.Create(property.Name)
                     .SetStatic(property.IsStatic)
                     .Build();
                 
                 parent.AddMember(prop);
                 AddSymbol(property, prop);
-            } break;
+                
+                break;
+                ret_lbl: return;
+            }
             
             default: throw new UnreachableException();
         }
@@ -287,7 +308,6 @@ public partial class CSharpCompressorUnit
                     realizerModule.AddMember(instStructMeta);
                     AddSymbol(symbol, instStructMeta);
                 } break;
-
                 
                 case IntrinsincElements.Function_RuntimeInteripServicesNativeMemoryAlignedAlloc:
                 {
@@ -383,7 +403,36 @@ public partial class CSharpCompressorUnit
                     realizerModule.AddMember(fun);
                     AddSymbol(symbol, fun);
                 } break;
+
+                case IntrinsincElements.Function_GetStringLength:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithParameter("str", SliceTypeReference.Utf8String)
+                        .WithReturnType(IntegerTypeReference.Int)
+                        .Build();
+
+                    var code = fun.AddOmegaCodeCell("entry");
+                    code.Writer.Ret(new IntTypeCast(IntegerTypeReference.Int, new LenOf(new Argument(fun.Parameters[0]))));
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
                 
+                case IntrinsincElements.Operator_ImplicitInt32_2_UIntPtr:
+                {
+                    var fun = RealizerFunctionBuilder
+                        .Create(symbol.Name).AsStatic()
+                        .WithParameter("int32", IntegerTypeReference.Int)
+                        .WithReturnType(IntegerTypeReference.NUInt)
+                        .Build();
+
+                    var code = fun.AddOmegaCodeCell("entry");
+                    code.Writer.Ret(new IntTypeCast(IntegerTypeReference.NUInt, new Argument(fun.Parameters[0])));
+                    
+                    realizerModule.AddMember(fun);
+                    AddSymbol(symbol, fun);
+                } break;
                 
                 //default: throw new NotImplementedException();
             }
@@ -431,6 +480,10 @@ public partial class CSharpCompressorUnit
             case RealizerProperty p:
             {
                 var symbol = (IPropertySymbol)SymbolsMap(p);
+                bool ignoraAutoBackingField = false;
+
+                if (_intrinsincsMap_2.GetValueOrDefault(symbol) == IntrinsincElements.Property_StringLength)
+                    ignoraAutoBackingField = true;
         
                 p.Type = TypeOf(symbol.Type);
                 
@@ -438,7 +491,7 @@ public partial class CSharpCompressorUnit
                     (symbol.GetMethod == null || symbol.GetMethod.IsImplicitlyDeclared || !HasBody(symbol.GetMethod)) &&
                     (symbol.SetMethod == null || symbol.SetMethod.IsImplicitlyDeclared || !HasBody(symbol.SetMethod));
         
-                if (accessorsAreAuto)
+                if (accessorsAreAuto && !ignoraAutoBackingField)
                 {
                     var backingField = RealizerFieldBuilder
                         .Create($"<{p.Name}>k__BackingField")
@@ -519,5 +572,10 @@ public partial class CSharpCompressorUnit
         Function_RuntimeInteripServicesNativeMemoryAlloc,
         Function_RuntimeInteripServicesNativeMemoryFree,
         Function_RuntimeInteripServicesNativeMemoryRealloc,
+        
+        Property_StringLength,
+        Function_GetStringLength,
+        
+        Operator_ImplicitInt32_2_UIntPtr,
     }
 }

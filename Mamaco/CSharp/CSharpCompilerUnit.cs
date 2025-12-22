@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -32,6 +31,21 @@ public class CSharpCompilerUnit
         var newTree = CSharpSyntaxTree.Create((CompilationUnitSyntax)newRoot);
         
         _sources.Add((syntaxTree, newTree, rewriter.GetSpanShift()));
+    }
+
+    public void AddImplicitGlobalNamespaces(params string[] namespaces)
+    {
+        var nodes = namespaces.Select(ns => 
+                SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(ns))
+                    .WithGlobalKeyword(SyntaxFactory.Token(SyntaxKind.GlobalKeyword))
+                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+        ).ToArray();
+        var tree = SyntaxFactory.CompilationUnit()
+            .WithUsings(new SyntaxList<UsingDirectiveSyntax>(nodes)).
+            NormalizeWhitespace()
+            .SyntaxTree;
+        
+        _sources.Add((tree, tree, []));
     }
     
     public void Compile()

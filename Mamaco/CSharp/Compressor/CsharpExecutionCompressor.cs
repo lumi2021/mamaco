@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -37,10 +36,7 @@ public partial class CSharpCompressorUnit
                     
                     var func = (RealizerFunction)builder;
                     var cell = func.AddOmegaCodeCell("entry");
-                    Dictionary<ISymbol, int> localsMap = [];
-        
-                    for (var i = 0; i < methodSymbol.Parameters.Length; i++)
-                        localsMap.Add(methodSymbol.Parameters[i], -i - 1);
+                    Dictionary<ILocalSymbol, Register> localsMap = [];
                     
                     var s = node.GetSyntax();
                     switch (s)
@@ -105,10 +101,7 @@ public partial class CSharpCompressorUnit
                     if (node == null) continue;
                     
                     var func = (RealizerFunction)builder;
-                    Dictionary<ISymbol, int> localsMap = [];
-        
-                    for (var i = 0; i < methodSymbol.Parameters.Length; i++)
-                        localsMap.Add(methodSymbol.Parameters[i], -i - 1);
+                    Dictionary<ILocalSymbol, Register> localsMap = [];
                     
                     if (body != null)
                     {
@@ -117,7 +110,7 @@ public partial class CSharpCompressorUnit
                         if (body is BlockSyntax @b) ParseBlock(b, ref cell, localsMap);
                         else
                         {
-                            var x = ParseExpression((ExpressionSyntax)body, ref cell, localsMap);
+                            var x = ParseExpression((ExpressionSyntax)body, ref cell, localsMap, asStatement: methodSymbol.ReturnsVoid);
                             if (methodSymbol.ReturnsVoid) cell.Writer.Ret();
                             else cell.Writer.Ret(x);
                         }
@@ -187,12 +180,12 @@ public partial class CSharpCompressorUnit
         }
     }
     
-    private void ParseBlock(BlockSyntax node, ref OmegaCodeCell cell,  Dictionary<ISymbol, int> localsMap)
+    private void ParseBlock(BlockSyntax node, ref OmegaCodeCell cell,  Dictionary<ILocalSymbol, Register> localsMap)
     {
         foreach (var s in node.Statements)
             ParseStatement(s, ref cell, localsMap);
     }
-    private void ParseStatement(StatementSyntax node, ref OmegaCodeCell cell, Dictionary<ISymbol, int> localsMap)
+    private void ParseStatement(StatementSyntax node, ref OmegaCodeCell cell, Dictionary<ILocalSymbol, Register> localsMap)
     {
         switch (node)
         {
@@ -204,14 +197,12 @@ public partial class CSharpCompressorUnit
                     var csVarVal = variable.Initializer?.Value;
                     var csVarInt = localsMap.Count;
                     var csVarSymbol = (ILocalSymbol)RefOf(variable);
-                    
-                    localsMap.Add(csVarSymbol, csVarInt);
+
+                    var reg = new Register(TypeOf(csVarSymbol.Type), (ushort)csVarInt);
+                    localsMap.Add(csVarSymbol, reg);
                     
                     if (csVarVal == null) continue;
-                    
-                    cell.Writer.Assignment(
-                        new Register(TypeOf(csVarSymbol.Type), (ushort)csVarInt),
-                        ParseExpression(csVarVal, ref cell, localsMap));
+                    cell.Writer.Assignment(reg, ParseExpression(csVarVal, ref cell, localsMap));
                 }
             } return;
             
@@ -232,11 +223,12 @@ public partial class CSharpCompressorUnit
     private IOmegaExpression ParseExpression(
         ExpressionSyntax node,
         ref OmegaCodeCell cell,
-        Dictionary<ISymbol, int> localsMap,
+        Dictionary<ILocalSymbol, Register> localsMap,
         
         bool asStatement = false,
         TypeReference? expectedType = null,
-        bool instanceRelative = false)
+        bool instanceRelative = false,
+        bool ignoreInstance = false)
     {
         switch (node)
         {
@@ -262,13 +254,10 @@ public partial class CSharpCompressorUnit
                 foreach (var i in args)
                     argsList.Add(ParseExpression(i.Expression, ref cell, localsMap));
 
-                if (asStatement)
-                {
-                    cell.Writer.Call((IOmegaCallable)callee, [.. argsList]);
-                    return null!;
-                }
-
-                return new Call((IOmegaCallable)callee, [.. argsList]);
+                if (!asStatement) return new Call((IOmegaCallable)callee, [.. argsList]);
+                
+                cell.Writer.Call((IOmegaCallable)callee, [.. argsList]);
+                return null!;
             }
         
             case LiteralExpressionSyntax @lit:
@@ -313,12 +302,11 @@ public partial class CSharpCompressorUnit
                 var left = memberAccess.Expression;
                 var right = memberAccess.Name;
 
-                if (left is IdentifierNameSyntax)
-                    return ParseExpression(right, ref cell, localsMap);
+                if (RefOf(right).IsStatic) return ParseExpression(right, ref cell, localsMap);
                 
                 return new Access(
                     ParseExpression(left, ref cell, localsMap),
-                    ParseExpression(right, ref cell, localsMap, instanceRelative: true) as Member ?? throw new UnreachableException()
+                    ParseExpression(right, ref cell, localsMap, instanceRelative: true, ignoreInstance: true) as Member ?? throw new UnreachableException()
                 );
             }
             
@@ -341,8 +329,10 @@ public partial class CSharpCompressorUnit
                     IMethodSymbol @method => new Member(SymbolsMap(method)),
                     IFieldSymbol @field => new Member(SymbolsMap(field)),
                     IPropertySymbol @prop => new Member(SymbolsMap(prop)),
+                    ILocalSymbol @local => localsMap[local],
                     
                     IParameterSymbol @arg => new Argument(SymbolsMap(arg)),
+                    
                     
                     _ => throw new UnreachableException()
                 };
@@ -402,7 +392,10 @@ public partial class CSharpCompressorUnit
     }
 
     
-    private void ParseExpression_Assingment(ExpressionSyntax node, ref OmegaCodeCell cell, Dictionary<ISymbol, int> localsMap)
+    private void ParseExpression_Assingment(
+        ExpressionSyntax node,
+        ref OmegaCodeCell cell,
+        Dictionary<ILocalSymbol, Register> localsMap)
     {
         switch (node)
         {
@@ -450,7 +443,7 @@ public partial class CSharpCompressorUnit
     private IOmegaExpression ParseExpressin_BinExp(
         BinaryExpressionSyntax node,
         ref OmegaCodeCell cell,
-        Dictionary<ISymbol, int> localsMap,
+        Dictionary<ILocalSymbol, Register> localsMap,
         TypeReference? expectedType)
     {
         var stringType = (ITypeSymbol)IntrinsincsMap(IntrinsincElements.Type_String);

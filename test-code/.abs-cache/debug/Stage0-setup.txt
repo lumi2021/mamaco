@@ -97,36 +97,70 @@ module @System {
 	
 		func @Write([]u8 content) void {	
 			entry:
+				call void @System.Console.__write((i32 0), %content)
+				ret
+			
+		}
+	
+		func @Write(i32 content) void {	
+			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
+				ret
+			
+		}
+	
+		func @Write(u32 content) void {	
+			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
 				ret
 			
 		}
 	
 		func @Write(i64 content) void {	
 			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
 				ret
 			
 		}
 	
 		func @Write(u64 content) void {	
 			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
 				ret
 			
 		}
 	
 		func @WriteLine([]u8 content) void {	
 			entry:
+				call void @System.Console.__write((i32 0), call []u8 @System.String.Concat(%content, "\0a"))
+				ret
+			
+		}
+	
+		func @WriteLine(i32 content) void {	
+			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
+				ret
+			
+		}
+	
+		func @WriteLine(u32 content) void {	
+			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
 				ret
 			
 		}
 	
 		func @WriteLine(i64 content) void {	
 			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
 				ret
 			
 		}
 	
 		func @WriteLine(u64 content) void {	
 			entry:
+				call void @System.Console.__write((i32 0), "TODO int.ToString()\0a")
 				ret
 			
 		}
@@ -228,42 +262,131 @@ module @System {
 		}
 	}
 
-	namespace @InteropServices {
-		namespace @NativeMemory {}
-	}
-
 	namespace @Runtime {
 		namespace @CompilerServices {
 			struct @IsExternalInit : @System.Object {}
 		}
+	
+		namespace @InteropServices {
+			namespace @NativeMemory {}
+		}
 	}
 
-	struct @FlagsAttribute : @System.Attribute {
-		func @.ctor() void {	
+	struct @Attribute : @System.Object {}
+
+	struct @Object {
+		func @GetType() *@System.Type {	
 			entry:
-				call initFields ()
-				ret
+				*@System.Type %0 = call *opaque @<RealizerIntrinsicsModule>.AlignedAlloc((uptr 0), (uptr 0))
+				call void @System.Type..ctor(*@System.Type %0, call *opaque @<RealizerIntrinsicsModule>.RealizerGetStructMetadataPointer(self))
+				ret *@System.Type %0
+			
+		}
+	
+		func @ToString() []u8 {	
+			entry:
+				ret call *@System.Type self->@System.Object.GetType()->@System.Type.FullName
+			
+		}
+	
+		func @Equals(*@System.Object obj) u1 {	
+			entry:
+				ret cmp Equal call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(self), call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(%obj)
+			
+		}
+	
+		func @GetHashCode() i32 {	
+			entry:
+				ret (i32 0)
 			
 		}
 	}
 
-	typedef @AttributeTargets {
-		Assembly => (i32 1)
-		Module => (i32 2)
-		Class => (i32 4)
-		Struct => (i32 8)
-		Enum => (i32 16)
-		Constructor => (i32 32)
-		Method => (i32 64)
-		Property => (i32 128)
-		Field => (i32 256)
-		Event => (i32 512)
-		Interface => (i32 1024)
-		Parameter => (i32 2048)
-		Delegate => (i32 4096)
-		ReturnValue => (i32 8192)
-		GenericParameter => (i32 16384)
-		All => (i32 32767)
+	struct @Type : @System.Object {
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 1
+		field *opaque @metadataPtr
+	
+		property []u8 @Name { get = @System.Type.get_Name }
+	
+		func @get_Name() []u8 {	
+			entry:
+				ret self->@System.Type.<Name>k__BackingField
+			
+		}
+	
+		property []u8 @FullName { get = @System.Type.get_FullName }
+	
+		func @get_FullName() []u8 {	
+			entry:
+				ret self->@System.Type.<FullName>k__BackingField
+			
+		}
+	
+		func @.ctor(*opaque metadataPtr) void {	
+			entry:
+				call initFields ()
+				self->@System.Type.metadataPtr = %metadataPtr
+				ret
+			
+		}
+	
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
+		field []u8 @<Name>k__BackingField
+	
+		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
+		field []u8 @<FullName>k__BackingField
+	}
+
+	struct @IntPtr : @System.ValueType {}
+
+	struct @Decimal : @System.ValueType {}
+
+	struct @UIntPtr : @System.ValueType {}
+
+	struct @ValueType : @System.Object {}
+
+	struct @Reflection : @System.Object {}
+
+	namespace @String {
+		property i32 @Length { get = @<RealizerIntrinsicsModule>.get_Length }
+	
+		func @Concat([]u8 str0, []u8 str1) []u8 {	
+			entry:
+				i32 %0 =  add %str0->@System.String.Length, %str1->@System.String.Length
+				*opaque %1 = call *opaque @<RealizerIntrinsicsModule>.AlignedAlloc(i32 %0, (i32 1))
+				ret "todo\0a"
+			
+		}
+	}
+
+	struct @Delegate : @System.Object {}
+
+	namespace @Diagnostics {
+		struct @UnreachableException : @System.Exception {
+			func @.ctor() void {	
+				entry:
+					call initFields ()
+					call void self->@System.Exception..ctor(([]u8 null), (*@System.Exception null))
+					ret
+				
+			}
+		
+			func @.ctor([]u8 message) void {	
+				entry:
+					call initFields ()
+					call void self->@System.Exception..ctor(%message, (*@System.Exception null))
+					ret
+				
+			}
+		
+			func @.ctor([]u8 message, *@System.Exception innerException) void {	
+				entry:
+					call initFields ()
+					call void self->@System.Exception..ctor(%message, %innerException)
+					ret
+				
+			}
+		}
 	}
 
 	struct @AttributeUsageAttribute : @System.Attribute {
@@ -328,113 +451,32 @@ module @System {
 		field u1 @<Inherited>k__BackingField
 	}
 
-	namespace @Diagnostics {
-		struct @UnreachableException : @System.Exception {
-			func @.ctor() void {	
-				entry:
-					call initFields ()
-					call void self->@System.Exception..ctor(([]u8 null), (*@System.Exception null))
-					ret
-				
-			}
-		
-			func @.ctor([]u8 message) void {	
-				entry:
-					call initFields ()
-					call void self->@System.Exception..ctor(%message, (*@System.Exception null))
-					ret
-				
-			}
-		
-			func @.ctor([]u8 message, *@System.Exception innerException) void {	
-				entry:
-					call initFields ()
-					call void self->@System.Exception..ctor(%message, %innerException)
-					ret
-				
-			}
-		}
-	}
-
-	struct @Reflection : @System.Object {}
-
-	struct @ValueType : @System.Object {}
-
-	struct @Type : @System.Object {
-		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 1
-		field *opaque @metadataPtr
-	
-		property []u8 @Name { get = @System.Type.get_Name }
-	
-		func @get_Name() []u8 {	
-			entry:
-				ret self->@System.Type.<Name>k__BackingField
-			
-		}
-	
-		property []u8 @FullName { get = @System.Type.get_FullName }
-	
-		func @get_FullName() []u8 {	
-			entry:
-				ret self->@System.Type.<FullName>k__BackingField
-			
-		}
-	
-		func @.ctor(*opaque metadataPtr) void {	
+	struct @FlagsAttribute : @System.Attribute {
+		func @.ctor() void {	
 			entry:
 				call initFields ()
-				self->@System.Type.metadataPtr = %metadataPtr
 				ret
 			
 		}
-	
-		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
-		field []u8 @<Name>k__BackingField
-	
-		; index = 0 bitAlignment = 0 bitOffset = 0  bitLength = ptr * 2
-		field []u8 @<FullName>k__BackingField
 	}
 
-	struct @Attribute : @System.Object {}
-
-	struct @Decimal : @System.ValueType {}
-
-	struct @Delegate : @System.Object {}
-
-	struct @Object {
-		func @GetType() *@System.Type {	
-			entry:
-				*@System.Type %0 = call *opaque @<RealizerIntrinsicsModule>.AlignedAlloc((uptr 0), (uptr 0))
-				call void @System.Type..ctor(*@System.Type %0, call *opaque @<RealizerIntrinsicsModule>.RealizerGetStructMetadataPointer(self))
-				ret *@System.Type %0
-			
-		}
-	
-		func @ToString() []u8 {	
-			entry:
-				ret call *@System.Type self->@System.Object.GetType()->@System.Type.FullName
-			
-		}
-	
-		func @Equals(*@System.Object obj) u1 {	
-			entry:
-				ret cmp Equal call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(self), call *@System.Object @<RealizerIntrinsicsModule>.RealizerGetObjectPointer(%obj)
-			
-		}
-	
-		func @GetHashCode() i32 {	
-			entry:
-				ret (i32 0)
-			
-		}
-	}
-
-	namespace @String {
-		func @Concat([]u8 str0, []u8 str1) []u8 {	
-			entry:
-				ret "todo"
-			
-		}
+	typedef @AttributeTargets {
+		Assembly => (i32 1)
+		Module => (i32 2)
+		Class => (i32 4)
+		Struct => (i32 8)
+		Enum => (i32 16)
+		Constructor => (i32 32)
+		Method => (i32 64)
+		Property => (i32 128)
+		Field => (i32 256)
+		Event => (i32 512)
+		Interface => (i32 1024)
+		Parameter => (i32 2048)
+		Delegate => (i32 4096)
+		ReturnValue => (i32 8192)
+		GenericParameter => (i32 16384)
+		All => (i32 32767)
 	}
 
 	namespace @Realizer {
@@ -453,6 +495,18 @@ module @<RealizerIntrinsicsModule> {
 	import "" "__free" func @Free(*opaque ptr) void {}
 
 	import "" "__realloc" func @Realloc(*opaque ptr, uptr length) *opaque {}
+
+	func @op_Implicit(i32 int32) uptr {	
+		entry:
+			ret %int32 as uptr
+		
+	}
+
+	func @get_Length([]u8 str) i32 {	
+		entry:
+			ret lenof %str as i32
+		
+	}
 
 	func @RealizerGetStructMetadataPointer(*@System.Object object) *opaque {	
 		entry:
