@@ -95,6 +95,7 @@ public static class Builder
     {
         RealizerModules.ManualLoad(Path.Combine(AppContext.BaseDirectory, "Tq.Module.LLVM.dll"));
         RealizerModules.ManualLoad(Path.Combine(AppContext.BaseDirectory, "Tq.Module.CLR.dll"));
+        RealizerModules.ManualLoad(Path.Combine(AppContext.BaseDirectory, "Tq.Module.ELF.dll"));
     }
 
     private static void ClearLocal()
