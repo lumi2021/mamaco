@@ -10,6 +10,7 @@
     <ItemGroup>
       <ProjectReference Include="..\RealizerModules\target-CLR\Tq.Module.CLR\Tq.Module.CLR.csproj" />
       <ProjectReference Include="..\RealizerModules\target-ELF\Tq.Module.CLR\Tq.Module.ELF.csproj" />
+      <ProjectReference Include="..\RealizerModules\target-ELF\Tq.Module.ELF\Tq.Module.ELF.csproj" />
       <ProjectReference Include="..\RealizerModules\target-LLVM\Tq.Module.LLVM\Tq.Module.LLVM.csproj" />
       <ProjectReference Include="..\tq-realizer\Tq.Realizer\Tq.Realizer.csproj" />
     </ItemGroup>
