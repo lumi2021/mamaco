@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Text;
 using Microsoft.CodeAnalysis;
-using Tq.Realizeer.Core.Program;
-using Tq.Realizeer.Core.Program.Builder;
-using Tq.Realizeer.Core.Program.Member;
+using Tq.Realizer.Core.Program;
+using Tq.Realizer.Core.Program.Builder;
+using Tq.Realizer.Core.Program.Member;
 using Tq.Realizer.Core.Builder.References;
-using static Tq.Realizer.Core.Builder.Language.Omega.OmegaInstructions;
+using static Tq.Realizer.Core.Execution.Omega.OmegaInstructions;
 
 
 namespace Mamaco;

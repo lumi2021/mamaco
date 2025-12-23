@@ -4,13 +4,13 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Tq.Realizeer.Core.Program.Builder;
-using Tq.Realizeer.Core.Program.Member;
+using Tq.Realizer.Core.Execution.Omega;
+using Tq.Realizer.Core.Program.Builder;
+using Tq.Realizer.Core.Program.Member;
 using Tq.Realizer.Core.Builder.Execution;
-using Tq.Realizer.Core.Builder.Execution.Omega;
 using Tq.Realizer.Core.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
-using static Tq.Realizer.Core.Builder.Language.Omega.OmegaInstructions;
+using static Tq.Realizer.Core.Execution.Omega.OmegaInstructions;
 
 namespace Mamaco;
 
@@ -261,7 +261,7 @@ public partial class CSharpCompressorUnit
             
             case ThrowExpressionSyntax @throw:
                 // Fake expression again
-                cell.Writer.Throw(null!);
+                cell.Writer.Invalid();
                 return null!;
             
             case InvocationExpressionSyntax @invocation:

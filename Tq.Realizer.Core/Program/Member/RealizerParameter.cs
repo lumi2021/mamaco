@@ -1,6 +1,6 @@
 using Tq.Realizer.Core.Builder.References;
 
-namespace Tq.Realizeer.Core.Program.Member;
+namespace Tq.Realizer.Core.Program.Member;
 
 public class RealizerParameter
 {

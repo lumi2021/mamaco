@@ -1,9 +1,9 @@
 using System.Text;
-using Tq.Realizeer.Core.Program.Member;
 using Tq.Realizer;
+using Tq.Realizer.Core.Program.Member;
 using Tq.Realizer.Data;
 
-namespace Tq.Realizeer.Core.Program.Builder;
+namespace Tq.Realizer.Core.Program.Builder;
 
 public class RealizerStructure: RealizerContainer
 {

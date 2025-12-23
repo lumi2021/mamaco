@@ -1,4 +1,4 @@
-namespace Tq.Realizeer.Core.Program.Builder;
+namespace Tq.Realizer.Core.Program.Builder;
 
 public struct RealizerNamespaceBuilder
 {

@@ -1,7 +1,7 @@
 using System.Text;
-using Tq.Realizeer.Core.Program.Builder;
+using Tq.Realizer.Core.Program.Builder;
 
-namespace Tq.Realizeer.Core.Program;
+namespace Tq.Realizer.Core.Program;
 
 public class RealizerProgram(string name)
 {

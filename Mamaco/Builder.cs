@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
-using Tq.Realizeer.Core.Program;
-using Tq.Realizeer.Core.Program.Builder;
+using Tq.Realizer.Core.Program;
+using Tq.Realizer.Core.Program.Builder;
 using Tq.Realizer;
 using Tq.Realizer.Core.Builder;
 

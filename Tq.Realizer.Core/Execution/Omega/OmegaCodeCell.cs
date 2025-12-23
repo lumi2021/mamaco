@@ -1,10 +1,11 @@
 using System.Text;
-using Tq.Realizeer.Core.Program.Builder;
+using Tq.Realizer;
+using Tq.Realizer.Core.Builder.Execution;
 using Tq.Realizer.Core.Builder.References;
-using IS = Tq.Realizer.Core.Builder.Execution.Omega.OmegaCodeCell.InstructionWriter;
-using static Tq.Realizer.Core.Builder.Language.Omega.OmegaInstructions;
+using Tq.Realizer.Core.Program.Builder;
+using static Tq.Realizer.Core.Execution.Omega.OmegaInstructions;
 
-namespace Tq.Realizer.Core.Builder.Execution.Omega;
+namespace Tq.Realizer.Core.Execution.Omega;
 
 public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s, n, idx)
 {
@@ -31,29 +32,24 @@ public class OmegaCodeCell(RealizerFunction s, string n, uint idx) : CodeCell(s,
         internal InstructionWriter(OmegaCodeCell builder) => _parentBuilder = builder;
     
         
-        private IS AppendInstruction(IOmegaInstruction value)
+        private InstructionWriter AppendInstruction(IOmegaInstruction value)
         {
             _parentBuilder._instructions.Add(value);
             return this;
         }
         
-        public IS Nop() => AppendInstruction(new Nop());
-        public IS Unreachable() => AppendInstruction(new Invalid());
-        public IS Invalid() => AppendInstruction(new Invalid());
+        public InstructionWriter Nop() => AppendInstruction(new Nop());
+        public InstructionWriter Unreachable() => AppendInstruction(new Invalid());
+        public InstructionWriter Invalid() => AppendInstruction(new Invalid());
         
-        public IS Assignment(IOmegaAssignable left, IOmegaExpression right) => AppendInstruction(new Assignment(left, right));
-        public IS Call(IOmegaCallable callable, params IOmegaExpression[] args) => AppendInstruction(new Call(callable, args));
-        public IS IntrinsicCall(IntrinsicFunctions func, params IOmegaExpression[] args) => AppendInstruction(new CallIntrinsic(func, args));
+        public InstructionWriter Assignment(IOmegaAssignable left, IOmegaExpression right) => AppendInstruction(new Assignment(left, right));
+        public InstructionWriter Call(IOmegaCallable callable, params IOmegaExpression[] args) => AppendInstruction(new Call(callable, args));
+        public InstructionWriter IntrinsicCall(IntrinsicFunctions func, params IOmegaExpression[] args) => AppendInstruction(new CallIntrinsic(func, args));
 
-        public IS Ret(IOmegaExpression? value = null) => AppendInstruction(new Ret(value));
-        public IS Throw(IOmegaExpression? value) => AppendInstruction(new Throw(value));
-        public IS Branch(CodeCell block) => AppendInstruction(new Branch(block));
-        public IS Branch(uint blockindex) => AppendInstruction(new Branch(blockindex));
-        public IS CBranch(IOmegaExpression condition, CodeCell iftrue, CodeCell iffalse)
+        public InstructionWriter Ret(IOmegaExpression? value = null) => AppendInstruction(new Ret(value));
+        public InstructionWriter Branch(CodeCell block) => AppendInstruction(new Branch(block));
+        public InstructionWriter CBranch(IOmegaExpression condition, CodeCell iftrue, CodeCell iffalse)
             => AppendInstruction(new CBranch(condition, iftrue, iffalse));
-        public IS CBranch(IOmegaExpression condition, uint iftrue, uint iffalse)
-            => AppendInstruction(new CBranch(condition, iftrue, iffalse));
-        
         public Register GetNewRegister(TypeReference t) => new Register(t, _parentBuilder._nextReg++);
     }
     

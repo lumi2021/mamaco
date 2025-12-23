@@ -1,4 +1,4 @@
-namespace Tq.Realizeer.Core.Program.Member;
+namespace Tq.Realizer.Core.Program.Member;
 
 public abstract class RealizerContainer: RealizerMember
 {

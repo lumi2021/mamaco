@@ -1,11 +1,11 @@
 using System.Text;
-using Tq.Realizeer.Core.Program.Member;
+using Tq.Realizer.Core.Execution.Omega;
 using Tq.Realizer;
 using Tq.Realizer.Core.Builder.Execution;
-using Tq.Realizer.Core.Builder.Execution.Omega;
 using Tq.Realizer.Core.Builder.References;
+using Tq.Realizer.Core.Program.Member;
 
-namespace Tq.Realizeer.Core.Program.Builder;
+namespace Tq.Realizer.Core.Program.Builder;
 
 public class RealizerFunction: RealizerMember
 {
@@ -15,8 +15,7 @@ public class RealizerFunction: RealizerMember
     public TypeReference? ReturnType = null;
 
     private List<CodeCell> _executionBlocks = [];
-    public IEnumerable<CodeCell> ExecutionBlocks => _executionBlocks.AsEnumerable();
-    public int ExecutionBlocksCount => _executionBlocks.Count;
+    public CodeCell[] ExecutionBlocks => [.. _executionBlocks];
 
     public string? ExportSymbol { get; private set; } = null;
     public string? ImportDomain { get; private set; } = null;
@@ -73,7 +72,7 @@ public class RealizerFunction: RealizerMember
         sb.Append(string.Join(", ", Parameters));
         sb.Append($") {ReturnType?.ToString() ?? "void"} {{");
         foreach (var i in ExecutionBlocks) sb.Append($"\n{i:full}".TabAllLines());
-        if (ExecutionBlocksCount > 0) sb.AppendLine();
+        if (ExecutionBlocks.Length > 0) sb.AppendLine();
         sb.Append('}');
         
         return sb.ToString();

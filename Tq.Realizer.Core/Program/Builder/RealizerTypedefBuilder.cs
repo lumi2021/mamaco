@@ -1,7 +1,7 @@
 using Tq.Realizer.Core.Builder.References;
 using Tq.Realizer.Core.Intermediate.Values;
 
-namespace Tq.Realizeer.Core.Program.Builder;
+namespace Tq.Realizer.Core.Program.Builder;
 
 public struct RealizerTypedefBuilder()
 {

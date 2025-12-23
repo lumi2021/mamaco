@@ -1,6 +1,6 @@
-using Tq.Realizeer.Core.Program.Builder;
+using Tq.Realizer.Core.Program.Builder;
 
-namespace Tq.Realizeer.Core.Program.Member;
+namespace Tq.Realizer.Core.Program.Member;
 
 public abstract class RealizerMember : IFormattable
 {

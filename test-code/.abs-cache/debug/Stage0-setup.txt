@@ -367,29 +367,29 @@ module @System {
 				*opaque %1 = call *opaque @<RealizerIntrinsicsModule>.AlignedAlloc(i32 %0, (i32 1)) as *opaque
 				i32 %2 = (i32 0)
 				i32 %3 = (i32 0)
-				branch 1
+				branch Code block 'while.condition'(1)
 				
 			while.condition:
-				cbranch cmp UnsignedLessThan i32 %2, %str0->@System.String.Length, 2, 3
+				cbranch cmp UnsignedLessThan i32 %2, %str0->@System.String.Length,while.execution(2), while.break(3)
 				
 			while.execution:
 				i32 %2 = i32 add i32 %2, (i32 1)
 				i32 %3 = i32 add i32 %3, (i32 1)
 				*opaque %1[i32 %2] = %str0[i32 %3]
-				branch 1
+				branch Code block 'while.condition'(1)
 				
 			while.break:
 				i32 %3 = (i32 0)
-				branch 4
+				branch Code block 'while.condition'(4)
 				
 			while.condition:
-				cbranch cmp UnsignedLessThan i32 %2, %str1->@System.String.Length, 5, 6
+				cbranch cmp UnsignedLessThan i32 %2, %str1->@System.String.Length,while.execution(5), while.break(6)
 				
 			while.execution:
 				i32 %2 = i32 add i32 %2, (i32 1)
 				i32 %3 = i32 add i32 %3, (i32 1)
 				*opaque %1[i32 %2] = %str1[i32 %3]
-				branch 4
+				branch Code block 'while.condition'(4)
 				
 			while.break:
 				[]u8 %4 = call []u8 @<RealizerIntrinsicsModule>.String..ctor(*opaque %1, i32 %0)
@@ -573,7 +573,7 @@ module @<RealizerIntrinsicsModule> {
 
 	func @RealizerGetObjectPointer(*@System.Object object) *@System.Object {	
 		entry:
-			ret ref %object
+			ret &%object
 		
 	}
 }
